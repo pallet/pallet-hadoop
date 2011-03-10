@@ -16,17 +16,19 @@
 (def local-proxy "http://10.0.1.9:3128")
 
 (def local-node-specs
-  {:tags
-   {:hadoop
-    {:image
-     {:os-family :ubuntu
-      :os-64-bit true}}}
-   :phases {:bootstrap
-            (fn [request]
-              (pallet.resource.package/package-manager
-               request
-               :configure :proxy local-proxy))}
-   :proxy local-proxy})
+  (let [default-image  {:image
+                        {:os-family :ubuntu
+                         :os-64-bit true}}]
+    {:tags
+     {:hadoop default-image
+      :name-node default-image
+      :job-tracker default-image}
+     :phases {:bootstrap
+              (fn [request]
+                (pallet.resource.package/package-manager
+                 request
+                 :configure :proxy local-proxy))}
+     :proxy local-proxy}))
 
 (def local-env
   (merge local-node-specs parallel-env))
@@ -39,12 +41,12 @@
               hadoop/install
               (hadoop/configure "/tmp/hadoop/"
                                 :name-node ;; name of the node
-                                "job-tracker-name"
+                                :job-tracker
                                 {}))
   :reconfigure (phase
                 (hadoop/configure "/tmp/hadoop"
                                   :name-node ;; name of the node
-                                  "job-tracker-name"
+                                  :job-tracker
                                   {})))
 
 (def name-node
@@ -54,6 +56,14 @@
                          (hadoop/name-node "/tmp/node-name/data" )))
       (assoc-in
        [:tag] :name-node)))
+
+(def job-tracker
+  (-> hadoop
+      (assoc-in
+       [:phases :start] (phase
+                         (hadoop/job-tracker)))
+      (assoc-in
+       [:tag] :job-tracker)))
 
 (comment
   (use 'pallet.core)
