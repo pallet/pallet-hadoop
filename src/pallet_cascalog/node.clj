@@ -36,7 +36,11 @@
   :bootstrap automated-admin-user
   :configure (phase
               (java/java :jdk)
-              hadoop/install))
+              hadoop/install
+              (hadoop/configure "/tmp/hadoop/"
+                                "name-node-name"
+                                "job-tracker-name"
+                                {})))
 
 (def name-node
   (assoc-in
