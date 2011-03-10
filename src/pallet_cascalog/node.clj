@@ -38,15 +38,22 @@
               (java/java :jdk)
               hadoop/install
               (hadoop/configure "/tmp/hadoop/"
-                                "name-node-name"
+                                :name-node ;; name of the node
                                 "job-tracker-name"
-                                {})))
+                                {}))
+  :reconfigure (phase
+                (hadoop/configure "/tmp/hadoop"
+                                  :name-node ;; name of the node
+                                  "job-tracker-name"
+                                  {})))
 
 (def name-node
-  (assoc-in
-   hadoop
-   [:phases :start] (phase
-                     (hadoop/name-node "/tmp/node-name/data" ))))
+  (-> hadoop
+      (assoc-in
+       [:phases :start] (phase
+                         (hadoop/name-node "/tmp/node-name/data" )))
+      (assoc-in
+       [:tag] :name-node)))
 
 (comment
   (use 'pallet.core)
