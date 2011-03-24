@@ -2,7 +2,11 @@
   :description "A pallet config for cascalog projects"
   :dependencies [[org.clojure/clojure "1.2.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
+<<<<<<< HEAD
                  [org.cloudhoist/pallet "0.4.13"
+=======
+                 [org.cloudhoist/pallet "0.4.10"
+>>>>>>> node.clj up to date with current hadoop crate. Cluster launches, aside
                   :exclusions [org.jclouds/jclouds-compute
                                org.jclouds/jclouds-blobstore
                                org.jclouds/jclouds-scriptbuilder
