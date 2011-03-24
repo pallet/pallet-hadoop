@@ -43,6 +43,7 @@
                                 :name-node ;; name of the node
                                 :job-tracker
                                 {}))
+  :reinstall (phase hadoop/install)
   :reconfigure (phase
                 (hadoop/configure "/tmp/hadoop"
                                   :name-node ;; name of the node
@@ -53,7 +54,7 @@
   (-> hadoop
       (assoc-in
        [:phases :start] (phase
-                         (hadoop/name-node "/tmp/node-name/data" )))
+                         (hadoop/name-node "/tmp/node-name/data")))
       (assoc-in
        [:tag] :name-node)))
 
