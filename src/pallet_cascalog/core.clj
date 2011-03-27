@@ -34,6 +34,8 @@
 ;; Then give the guys my configuration file, from my macbook.
 ;; TODO -- figure out how to get the proper user permissions!
 ;;
+;; run squid -z the first time. squid -N runs with no daemon mode
+;;
 ;; http://www.deckle.co.za/squid-users-guide/Squid_Configuration_Basics
 ;; http://www.deckle.co.za/squid-users-guide/Starting_Squid
 ;;
