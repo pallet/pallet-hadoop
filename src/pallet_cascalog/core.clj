@@ -7,9 +7,6 @@
             [pallet.crate.hadoop :as h]
             [pallet.crate.java :as j]))
 
-(def service
-  (compute/compute-service-from-config-file :aws))
-
 ;; Okay, here's the good stuff. We're trying to get a system up and
 ;; running that can configure a persistent hadoop cluster.
 ;;

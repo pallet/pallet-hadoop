@@ -4,62 +4,46 @@
         [pallet.thread-expr :only (for->)]
         [pallet.resource :only (phase)]
         [clojure.pprint :only (pprint)])
-  (:require [pallet.compute :as compute]
+  (:require [pallet-cascalog.environments :as env]
+            [pallet.compute :as compute]
             [pallet.core :as core]
             [pallet.crate.hadoop :as hadoop]
             [pallet.crate.java :as java]
             pallet.compute.vmfest))
 
 (defn debug [req comment & [key-vec]]
-  (println "***" comment (or key-vec "(full request)"))
-  (if key-vec
-    (pprint (get-in req  key-vec))
-    (pprint req))
-  req)
-
-;;## Local Node Configuration
-;;
-;; This all has to do with the local node, and is not necessary for
-;;the hadoop configuration.
-;;
-;; TODO -- describe more.
-
-(def service
-  (compute/compute-service-from-config-file :virtualbox))
-
-(def parallel-env {}
-  #_{:algorithms
-   {:lift-fn pallet.core/parallel-lift
-    :vmfest {:create-nodes-fn pallet.compute.vmfest/parallel-create-nodes}
-    :converge-fn pallet.core/parallel-adjust-node-counts}})
-
-(def local-proxy (format "http://%s:3128"
-                         (.getHostAddress
-                          (InetAddress/getLocalHost))))
-
-(def local-node-specs
-  (let [default-image  {:image
-                        {:os-family :ubuntu
-                         :os-64-bit true}}]
-    {:tags (zipmap [:hadoop :namenode :jobtracker :slavenode]
-                   (repeat default-image))
-     :phases {:bootstrap
-              (phase
-               (pallet.resource.package/package-manager
-                :configure :proxy local-proxy))}
-     :proxy local-proxy}))
-
-(def local-env
-  (merge local-node-specs parallel-env))
+  (do (println "***" comment (or key-vec "(full request)"))
+      (if key-vec
+        (pprint (get-in req  key-vec))
+        (pprint req))
+      req))
 
 ;; ## Hadoop Configuration
 
+;; TODO -- some serious documentation on this bad boy!
+;;
+;; Merge in and test Toni's stuff
+;;
+;; Test hadoop starting procedure!
+;;
+;; Install the current hadoop to maven, maybe, so we stop getting such
+;;weird errors.
+;;
+;; NOTES:
+;;
+;; A cluster should take in a map of arguments (ip-type, for example)
+;; and a map of node descriptions, including base nodes for each node
+;; type, and output a cluster object. We should have a layer of
+;; abstraction on top of nodes, etc.
+
 (defn hadoop-phases
-  "TODO -- documentation here, on why we have the ip-type option!"
+  "TODO -- documentation here, on why we have the ip-type option! TODO
+  - -can we get this ip-type from the cluster definition, somehow?
+  Where does it need to exist, given that the configuration step is
+  the only only one that needs to know?"
   [ip-type]
   (let [configure (fn [request]
                     (hadoop/configure request
-                                      "/tmp/hadoop"
                                       :namenode
                                       :jobtracker
                                       ip-type
@@ -79,7 +63,10 @@
                              "/tmp/node-name/data"))}))
 
 (defn hadoop-node
-  "TODO -- docs here!"
+  "TODO -- docs here! We're creating a hadoop node, but what kind?
+  What phases does it have? We should think about merging the
+  phaseseqs before we send anything into hadoop-node. Might that be
+  the cluster's responsibility?"
   [ip-type tag phaseseq]
   (apply core/make-node
          tag
@@ -89,7 +76,7 @@
                              (into [:bootstrap :configure :reconfigure]
                                    phaseseq)))))
 
-;; todo -- does this make sense?
+;; todo -- does this make sense? Should we call it `make-cluster`?
 (defn hadoop-cluster
   [ip-type nodecount]
   {:ip-type ip-type
@@ -107,9 +94,10 @@
                        :count nodecount}}})
 
 ;; Here's an example cluster to play with.
-(def testcluster (hadoop-cluster :public 10))
+(def testcluster (hadoop-cluster :public 0))
 
 (defn describe
+<<<<<<< HEAD
   "TODO -- better name!"
   [cluster task]
   (into {}
@@ -144,22 +132,46 @@
 
 (def kill-cluster
   (partial cluster-converge :kill))
+=======
+  "TODO -- better name! Also, maybe the task input could be :lift, for
+describe."
+  ([cluster] (keys (describe cluster :kill)))
+  ([cluster task]
+     (into {}
+           (for [[node config] (:nodes cluster)
+                 :let [ip-type (:ip-type cluster)
+                       [count phases] (map config [:count :phases])
+                       node-def (hadoop-node ip-type node phases)]]
+             (case task
+                   :boot [node-def count]
+                   :kill [node-def 0])))))
 
-;; TODO -- add methods explaining cluster
-(defn cluster-lift
+;; TODO -- add methods explaining cluster. How is it created? How are
+;; we meant to interact with it?
+(defn converge-cluster
+  [action cluster service env]
+  (core/converge (describe cluster action)
+                 :compute service
+                 :environment env))
+
+(def boot-cluster (partial converge-cluster :boot))
+(def kill-cluster (partial converge-cluster :kill))
+>>>>>>> Cleaned bugs out of cluster -- added notes for next phase of cluster
+
+(defn lift-cluster
   [phaseseq cluster service env]
-  (core/lift (node-tags cluster)
+  (core/lift (describe cluster)
              :compute service
              :environment env
              :phase phaseseq))
 
 (def start-cluster
-  (partial cluster-lift [:start-namenode
+  (partial lift-cluster [:start-namenode
                          :start-hdfs
                          :start-jobtracker
                          :start-mapred]))
 
 ;; How to use this thing...
 (comment
-  (def testcluster (hadoop-cluster :public 10))
-  ((comp boot-cluster start-cluster) testcluster service local-env))
+  (def testcluster (hadoop-cluster :public 0))
+  ((comp boot-cluster start-cluster) testcluster env/vm-service env/vm-env))

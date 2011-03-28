@@ -8,6 +8,8 @@ FIXME: write description
 
 ### Network Topology Optimization
 
+[one example...](http://www.matejunkie.com/how-to-kick-off-hadoops-rack-awareness/)
+
 Page 248 discusses how to map out a custom network topology on hadoop using script based mapping. Essentially, we need to write a script that will take a variable number of IP addresses, and return the corresponding network locations. I'm not sure how we can do this effectively, with a pre-written script. Maybe we could use stevedore to generate a script based on all existing nodes in the cluster? Check the "Hadoop Definitive Guide" source code for an example script, here.
 
 The other option would be to implement DNS to Switch mapping:
