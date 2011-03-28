@@ -53,14 +53,17 @@
                  (java/java :jdk)
                  hadoop/install
                  configure)
-     :reconfigure configure
+     :reconfigure (phase (hadoop/configure
+                          :namenode
+                          :jobtracker
+                          ip-type
+                          {}))
      :publish-ssh-key (phase (hadoop/publish-ssh-key))
      :authorize-jobtracker (phase (hadoop/authorize-jobtracker))
      :start-mapred (phase (hadoop/task-tracker))
      :start-hdfs (phase (hadoop/data-node))
      :start-jobtracker (phase (hadoop/job-tracker))
-     :start-namenode (phase (hadoop/name-node
-                             "/tmp/node-name/data"))}))
+     :start-namenode (phase (hadoop/name-node "/tmp/node-name/data"))}))
 
 (defn hadoop-node
   "TODO -- docs here! We're creating a hadoop node, but what kind?
@@ -68,16 +71,22 @@
   phaseseqs before we send anything into hadoop-node. Might that be
   the cluster's responsibility?"
   [ip-type tag phaseseq]
-  (apply core/make-node
-         tag
-         {:inbound-ports [50030 50060 50070]}
-         (apply concat
-                (select-keys (hadoop-phases ip-type)
-                             (into [:bootstrap :configure :reconfigure]
-                                   phaseseq)))))
+  (let [default-phases [:bootstrap
+                        :configure
+                        :reconfigure
+                        :authorize-jobtracker]]
+    (apply core/make-node
+           tag
+           {}
+           #_{:inbound-ports [50030 50060 50070]}
+           (apply concat
+                  (select-keys (hadoop-phases ip-type)
+                               (into default-phases
+                                     phaseseq))))))
 
 ;; todo -- does this make sense? Should we call it `make-cluster`?
-(defn hadoop-cluster
+
+(defn cluster-def
   [ip-type nodecount]
   {:ip-type ip-type
    :nodes {:namenode {:phases [:start-namenode
@@ -93,28 +102,24 @@
                                 :start-mapred]
                        :count nodecount}}})
 
-;; Here's an example cluster to play with.
-(def testcluster (hadoop-cluster :public 0))
-
 (defn describe
-<<<<<<< HEAD
-  "TODO -- better name!"
-  [cluster task]
-  (into {}
-        (for [[node config] (:nodes cluster)
-              :let [[count phases ip-type]
-                    (map config [:count :phases :ip-type])
-                    node-def (hadoop-node ip-type node phases)]]
-          (case task
-                :boot [node-def count]
-                :kill [node-def 0]))))
-
-(defn node-tags [cluster]
-  (keys (:nodes cluster)))
+  "TODO -- better name! Also, maybe the task input could be :lift, for
+describe."
+  ([cluster]
+     (keys (describe cluster :kill)))
+  ([cluster task]
+     (into {}
+           (for [[node config] (:nodes cluster)
+                 :let [ip-type (:ip-type cluster)
+                       [count phases] (map config [:count :phases])
+                       node-def (hadoop-node ip-type node phases)]]
+             (case task
+                   :boot [node-def count]
+                   :kill [node-def 0])))))
 
 ;; TODO -- add methods explaining cluster
 ;; TODO -- simplify this
-(defn cluster-converge
+(defn converge-cluster
   ([action cluster service env]
      (core/converge (describe cluster action)
                     :compute service
@@ -126,37 +131,12 @@
                     :phase phaseseq)))
 
 (def boot-cluster
-  (partial cluster-converge :boot [:configure
+  (partial converge-cluster :boot [:configure
                                    :publish-ssh-key
                                    :authorize-jobtracker]))
 
 (def kill-cluster
-  (partial cluster-converge :kill))
-=======
-  "TODO -- better name! Also, maybe the task input could be :lift, for
-describe."
-  ([cluster] (keys (describe cluster :kill)))
-  ([cluster task]
-     (into {}
-           (for [[node config] (:nodes cluster)
-                 :let [ip-type (:ip-type cluster)
-                       [count phases] (map config [:count :phases])
-                       node-def (hadoop-node ip-type node phases)]]
-             (case task
-                   :boot [node-def count]
-                   :kill [node-def 0])))))
-
-;; TODO -- add methods explaining cluster. How is it created? How are
-;; we meant to interact with it?
-(defn converge-cluster
-  [action cluster service env]
-  (core/converge (describe cluster action)
-                 :compute service
-                 :environment env))
-
-(def boot-cluster (partial converge-cluster :boot))
-(def kill-cluster (partial converge-cluster :kill))
->>>>>>> Cleaned bugs out of cluster -- added notes for next phase of cluster
+  (partial converge-cluster :kill))
 
 (defn lift-cluster
   [phaseseq cluster service env]
@@ -173,5 +153,5 @@ describe."
 
 ;; How to use this thing...
 (comment
-  (def testcluster (hadoop-cluster :public 0))
+  (def testcluster (cluster-def :public 0))
   ((comp boot-cluster start-cluster) testcluster env/vm-service env/vm-env))
