@@ -2,13 +2,21 @@
   (:use [pallet.thread-expr :only (for->)]
         [pallet.resource :only (phase)]
         [pallet.crate.automated-admin-user
-         :only (automated-admin-user)])
+         :only (automated-admin-user)]
+        [clojure.pprint :only (pprint)])
   (:require pallet.compute.vmfest
             [pallet.core :as core]
             [pallet.compute :as compute]
             [pallet.crate.hadoop :as hadoop]
             [pallet.crate.java :as java])
   (:import [java.net InetAddress]))
+
+(defn debug [req comment & [key-vec]]
+  (println "***" comment (or key-vec "(full request)"))
+  (if key-vec
+    (pprint (get-in req  key-vec))
+    (pprint req))
+  req)
 
 (def service
   (compute/compute-service-from-config-file :virtualbox))
@@ -55,7 +63,9 @@
   {:inbound-ports [50030 50060 50070]}
   :bootstrap automated-admin-user
   :configure hadoop-config
-  :reconfigure hadoop-config)
+  :reconfigure hadoop-config
+  :authorize-jobtracker (phase
+                         (hadoop/authorize-jobtracker)))
 
 (defn hadoop-node
   [tag phasemap]
@@ -78,7 +88,9 @@
 (def job-tracker
   (hadoop-node
    :jobtracker
-   {:start-jobtracker (phase
+   {:publish-ssh-key (phase
+                      (hadoop/publish-ssh-key))
+    :start-jobtracker (phase
                        (hadoop/job-tracker))
     :start-hdfs (phase
                  (hadoop/data-node))
@@ -97,6 +109,9 @@
   [nodecount]
   (core/converge {name-node 1 job-tracker 1 slave-node nodecount}
                  :compute service
+                 :phase [:configure
+                         :publish-ssh-key
+                         :authorize-jobtracker]
                  :environment local-env))
 
 (defn start-cluster
@@ -104,7 +119,10 @@
   (core/lift [name-node job-tracker slave-node]
              :compute service
              :environment local-env
-             :phase [:start-namenode :start-jobtracker :start-hdfs :start-mapred]))
+             :phase [:start-namenode
+                     :start-jobtracker
+                     :start-hdfs
+                     :start-mapred]))
 
 (defn kill-cluster
   []
