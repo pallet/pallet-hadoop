@@ -1,15 +1,14 @@
 (ns pallet-cascalog.node
-  (:use [pallet.thread-expr :only (for->)]
-        [pallet.resource :only (phase)]
-        [pallet.crate.automated-admin-user
+  (:use [pallet.crate.automated-admin-user
          :only (automated-admin-user)]
+        [pallet.thread-expr :only (for->)]
+        [pallet.resource :only (phase)]
         [clojure.pprint :only (pprint)])
-  (:require pallet.compute.vmfest
+  (:require [pallet.compute :as compute]
             [pallet.core :as core]
-            [pallet.compute :as compute]
             [pallet.crate.hadoop :as hadoop]
-            [pallet.crate.java :as java])
-  (:import [java.net InetAddress]))
+            [pallet.crate.java :as java]
+            pallet.compute.vmfest))
 
 (defn debug [req comment & [key-vec]]
   (println "***" comment (or key-vec "(full request)"))
