@@ -22,8 +22,6 @@
 
 ;; TODO -- some serious documentation on this bad boy!
 ;;
-;; Merge in and test Toni's stuff
-;;
 ;; Test hadoop starting procedure!
 ;;
 ;; Install the current hadoop to maven, maybe, so we stop getting such
@@ -49,15 +47,12 @@
                                       ip-type
                                       {}))]
     {:bootstrap automated-admin-user
-     :configure (phase
-                 (java/java :jdk)
-                 hadoop/install
-                 configure)
-     :reconfigure (phase (hadoop/configure
-                          :namenode
-                          :jobtracker
-                          ip-type
-                          {}))
+     :configure (phase (java/java :jdk)
+                       hadoop/install
+                       configure)
+     :reinstall (phase hadoop/install
+                       configure)
+     :reconfigure configure
      :publish-ssh-key (phase (hadoop/publish-ssh-key))
      :authorize-jobtracker (phase (hadoop/authorize-jobtracker))
      :start-mapred (phase (hadoop/task-tracker))
@@ -72,19 +67,17 @@
   the cluster's responsibility?"
   [ip-type tag phaseseq]
   (let [default-phases [:bootstrap
+                        :reinstall
                         :configure
                         :reconfigure
                         :authorize-jobtracker]]
     (apply core/make-node
            tag
-           {}
-           #_{:inbound-ports [50030 50060 50070]}
+           {:inbound-ports [50030 50060 50070]}
            (apply concat
                   (select-keys (hadoop-phases ip-type)
                                (into default-phases
                                      phaseseq))))))
-
-;; todo -- does this make sense? Should we call it `make-cluster`?
 
 (defn cluster-def
   [ip-type nodecount]
@@ -154,4 +147,6 @@ describe."
 ;; How to use this thing...
 (comment
   (def testcluster (cluster-def :public 0))
-  ((comp boot-cluster start-cluster) testcluster env/vm-service env/vm-env))
+  (boot-cluster testcluster env/vm-service env/vm-env)
+  (start-cluster testcluster env/vm-service env/vm-env)
+  (kill-cluster testcluster env/vm-service env/vm-env))
