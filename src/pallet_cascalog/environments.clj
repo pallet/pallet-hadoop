@@ -21,17 +21,20 @@
                          (.getHostAddress
                           (InetAddress/getLocalHost))))
 
-(def local-node-specs
+(def remote-env
   (let [default-image  {:image
                         {:os-family :ubuntu
                          :os-64-bit true}}]
     {:tags (zipmap [:hadoop :namenode :jobtracker :slavenode]
-                   (repeat default-image))
-     :phases {:bootstrap
-              (phase
-               (package-manager
-                :configure :proxy local-proxy))}
-     :proxy local-proxy}))
+                   (repeat default-image))}))
+
+(def local-node-specs
+  (merge remote-env
+         {:proxy local-proxy
+          :phases {:bootstrap
+                   (phase
+                    (package-manager
+                     :configure :proxy local-proxy))}}))
 
 (def vm-env
   (merge local-node-specs parallel-env))

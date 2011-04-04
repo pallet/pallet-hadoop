@@ -40,3 +40,7 @@
 ;; TODO -- link over to Toni's instructions, on how to test this bad
 ;; boy.
 ;; https://gist.github.com/867526
+;;
+;; ERRORS with virtualbox
+;;
+;; http://forums.virtualbox.org/viewtopic.php?f=6&t=24383

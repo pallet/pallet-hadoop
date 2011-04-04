@@ -1,6 +1,7 @@
 (ns pallet-cascalog.node
   (:use [pallet.crate.automated-admin-user
          :only (automated-admin-user)]
+        [pallet.crate.hadoop :only (phase-fn defthreadfn)]
         [pallet.thread-expr :only (for->)]
         [pallet.resource :only (phase)]
         [clojure.pprint :only (pprint)])
@@ -108,24 +109,26 @@
   Where does it need to exist, given that the configuration step is
   the only only one that needs to know?"
   [ip-type]
-  (let [configure (phase
-                   (hadoop/configure :namenode
-                                     :jobtracker
-                                     ip-type
-                                     {}))]
+  (let [configure (phase-fn []
+                            (hadoop/configure :namenode
+                                              :jobtracker
+                                              ip-type
+                                              {}))]
     {:bootstrap automated-admin-user
-     :configure (phase (java/java :jdk)
-                       hadoop/install
-                       configure)
-     :reinstall (phase hadoop/install
-                       configure)
+     :configure (phase-fn []
+                          (java/java :jdk)
+                          hadoop/install
+                          configure)
+     :reinstall (phase-fn []
+                          hadoop/install
+                          configure)
      :reconfigure configure
      :publish-ssh-key hadoop/publish-ssh-key
      :authorize-jobtracker hadoop/authorize-jobtracker
      :start-mapred hadoop/task-tracker
      :start-hdfs hadoop/data-node
      :start-jobtracker hadoop/job-tracker
-     :start-namenode (hadoop/name-node "/tmp/node-name/data")}))
+     :start-namenode (phase-fn [] (hadoop/name-node "/tmp/node-name/data"))}))
 
 (defn hadoop-node
   "TODO -- docs here! We're creating a hadoop node, but what kind?
@@ -138,10 +141,13 @@
                         :configure
                         :reconfigure
                         :authorize-jobtracker]]
+    hadoop-ports [80 22 8020 8021
+                  50030 50060 50070
+                  50075 50090 50105
+                  50010 50020 50100]
     (apply core/make-node
            tag
-           {}
-           #_{:inbound-ports [50030 50060 50070]}
+           {:inbound-ports hadoop-ports}
            (apply concat
                   (select-keys (hadoop-phases ip-type)
                                (into default-phases
@@ -212,9 +218,15 @@ describe."
                          :start-jobtracker
                          :start-mapred]))
 
+(def testcluster (cluster-def :private 0))
+  
 ;; How to use this thing...
 (comment
-  (def testcluster (cluster-def :public 0))
   (boot-cluster testcluster env/vm-service env/vm-env)
+  (boot-cluster testcluster env/ec2-service env/remote-env)
+
   (start-cluster testcluster env/vm-service env/vm-env)
-  (kill-cluster testcluster env/vm-service env/vm-env))
+  (start-cluster testcluster env/ec2-service env/remote-env)
+
+  (kill-cluster testcluster env/vm-service env/vm-env)
+  (kill-cluster testcluster env/ec2-service env/remote-env))
