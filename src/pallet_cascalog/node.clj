@@ -140,11 +140,11 @@
                         :reinstall
                         :configure
                         :reconfigure
-                        :authorize-jobtracker]]
-    hadoop-ports [80 22 8020 8021
-                  50030 50060 50070
-                  50075 50090 50105
-                  50010 50020 50100]
+                        :authorize-jobtracker]
+        hadoop-ports [80 22 8020 8021
+                      50030 50060 50070
+                      50075 50090 50105
+                      50010 50020 50100]]
     (apply core/make-node
            tag
            {:inbound-ports hadoop-ports}
@@ -156,16 +156,19 @@
 (defn cluster-def
   [ip-type nodecount]
   {:ip-type ip-type
-   :nodes {:namenode {:phases [:start-namenode
+   :nodes {:namenode {:machine-spec {}
+                      :phases [:start-namenode
                                :start-hdfs
                                :start-mapred]
                       :count 1}
-           :jobtracker {:phases [:publish-ssh-key
+           :jobtracker {:machine-spec {}
+                        :phases [:publish-ssh-key
                                  :start-jobtracker
                                  :start-hdfs
                                  :start-mapred]
                         :count 1}
-           :slavenode {:phases [:start-hdfs
+           :slavenode {:machine-spec {}
+                       :phases [:start-hdfs
                                 :start-mapred]
                        :count nodecount}}})
 
