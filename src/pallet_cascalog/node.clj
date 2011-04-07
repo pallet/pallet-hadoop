@@ -1,7 +1,7 @@
 (ns pallet-cascalog.node
   (:use [pallet.crate.automated-admin-user
          :only (automated-admin-user)]
-        [pallet.crate.hadoop :only (phase-fn)]
+        [pallet.crate.hadoop :only (phase)]
         [clojure.pprint :only (pprint)]
         [clojure.set :only (union)])
   (:require [pallet-cascalog.environments :as env]
@@ -101,25 +101,27 @@
   Where does it need to exist, given that the configuration step is
   the only only one that needs to know?"
   [ip-type jt-tag nn-tag properties]
-  (let [configure (phase-fn [] (hadoop/configure ip-type
-                                                 nn-tag
-                                                 jt-tag
-                                                 properties))]
+  (let [configure (phase
+                   (hadoop/configure ip-type
+                                     nn-tag
+                                     jt-tag
+                                     properties))]
     {:bootstrap automated-admin-user
-     :configure (phase-fn []
-                          (java/java :jdk)
-                          hadoop/install
-                          configure)
-     :reinstall (phase-fn []
-                          hadoop/install
-                          configure)
+     :configure (phase
+                 (java/java :jdk)
+                 hadoop/install
+                 configure)
+     :reinstall (phase
+                 hadoop/install
+                 configure)
      :reconfigure configure
      :publish-ssh-key hadoop/publish-ssh-key
      :authorize-jobtracker hadoop/authorize-jobtracker
      :start-mapred hadoop/task-tracker
      :start-hdfs hadoop/data-node
      :start-jobtracker hadoop/job-tracker
-     :start-namenode (phase-fn [] (hadoop/name-node "/tmp/node-name/data"))}))
+     :start-namenode (phase
+                      (hadoop/name-node "/tmp/node-name/data"))}))
 
 ;; Hadoop doesn't really have too many requirements for its nodes --
 ;; we do have to layer a few properties onto the base nodespec,
