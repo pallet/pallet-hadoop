@@ -18,15 +18,8 @@
         (pprint req))
       req))
 
-;; ## Hadoop Configuration
+;; ## Hadoop Cluster Configuration
 
-;; TODO -- some serious documentation on this bad boy!
-;;
-;; Test hadoop starting procedure!
-;;
-;; Install the current hadoop to maven, maybe, so we stop getting such
-;;weird errors.
-;;
 ;; NOTES:
 ;;
 ;; A cluster should take in a map of arguments (ip-type, for example)
@@ -324,7 +317,7 @@
                          :start-mapred]))
 
 ;; TODO -- add overall cluster default hadoop properties.
-(def cluster-spec
+(def example-cluster-spec
   {:base-machine-spec {}
    :ip-type :private
    :nodedefs {:namenode    (hadoop-node [:namenode :slavenode] 1)
@@ -332,13 +325,21 @@
               :slaves      (slave-node 1)
               :spot-slaves (slave-node 5 :base-spec {:spot-price (float 0.03)})}})
 
+(defn cluster-spec [nodecount]
+  {:base-machine-spec {}
+   :ip-type :private
+   :nodedefs {:namenode    (hadoop-node [:namenode :slavenode] 1)
+              :jobtracker  (hadoop-node [:jobtracker :slavenode])
+              :slaves      (slave-node nodecount)}})
+
+(def test-cluster (cluster-spec 0))
 ;; How to use this thing...
 (comment
-  (boot-cluster cluster-spec env/vm-service env/vm-env)
-  (boot-cluster cluster-spec env/ec2-service env/remote-env)
+  ;; (boot-cluster test-cluster env/vm-service env/vm-env)
+  (boot-cluster test-cluster env/ec2-service env/remote-env)
 
-  (start-cluster cluster-spec env/vm-service env/vm-env)
-  (start-cluster cluster-spec env/ec2-service env/remote-env)
+  ;; (start-cluster test-cluster env/vm-service env/vm-env)
+  (start-cluster test-cluster env/ec2-service env/remote-env)
 
-  (kill-cluster cluster-spec env/vm-service env/vm-env)
-  (kill-cluster cluster-spec env/ec2-service env/remote-env))
+  ;; (kill-cluster test-cluster env/vm-service env/vm-env)
+  (kill-cluster test-cluster env/ec2-service env/remote-env))
