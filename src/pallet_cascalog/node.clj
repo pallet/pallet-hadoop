@@ -10,86 +10,66 @@
 
 ;; ## Hadoop Cluster Configuration
 
-;; NOTES:
+;; ### Utilities
 ;;
-;; A cluster should take in a map of arguments (ip-type, for example)
-;; and a map of node descriptions, including base nodes for each node
-;; type, and output a cluster object. We should have a layer of
-;; abstraction on top of nodes, etc.
+;; Hadoop doesn't really have too many requirements for its nodes --
+;; we do have to layer a few properties onto the base nodespec,
+;; however. The ports are the most important element. If the user
+;; supplies some default set of ports, we'd like to some way to take
+;; the union of the required hadoop ports and the supplied ports from
+;; the base node. The following function converts all supplied
+;; sequences to sets, takes the union, and converts the results back
+;; into a vector. Any type of collection is fine, for `xs`.
+
+(defn merge-to-vec
+  "Returns a vector containing the union of all supplied collections."
+  [& xs]
+  (apply (comp vec union) (map set xs)))
+
+;; TODO -- discuss aliasing.
+
+;; ### Defaults
 ;;
-;; NOTES ON HOSTNAME RESOLUTION
-;;
-;; It seems like this is an issue a number of folks are having. We
-;;need to populate etc/hosts to skip DNS resolution, if we're going to
-;;work on local machines. On EC2, I think we can get around this issue
-;;by using the public DNS address.
-;;
-;; Some discussion here on a way to short circuit DNS --
-;;http://www.travishegner.com/2009/06/hadoop-020-on-ubuntu-server-904-jaunty.html
-;;
-;; But do we want that, really?
-;;
-;; Looks like we need to do etc/hosts internally -- we could probably
-;;do this externally as well, with Amazon's public DNS names and
-;;private IP addresses.
-;;
-;; From here:
-;;https://twiki.grid.iu.edu/bin/view/Storage/HadoopUnderstanding
-;;
-;; For the namenode, etc to be virtualized, you must be able to access
-;;them through DNS, or etc/hosts.
-;;
-;; From HDFS-default --
-;;http://hadoop.apache.org/common/docs/r0.20.2/hdfs-default.html
-;;
-;;dfs.datanode.dns.nameserver -- The host name or IP address of the
-;;name server (DNS) which a DataNode should use to determine the host
-;;name used by the NameNode for communication and display purposes.
-;;
-;; More support for using external hostnames on EC2
-;; http://getsatisfaction.com/cloudera/topics/hadoop_configuring_a_slaves_hostname
-;;
-;; How to get hadoop running without DNS --
-;; http://db.tmtec.biz/blogs/index.php/get-hadoop-up-and-running-without-dns
-;;
-;; Using etc/hosts as default --
-;; http://www.linuxquestions.org/questions/linux-server-73/how-to-setup-nslookups-queries-using-etc-hosts-as-the-default-654882/
-;;
-;; And, most clearly:
-;;
-;; http://www.cloudera.com/blog/2008/12/securing-a-hadoop-cluster-through-a-gateway/
-;;
-;; One “gotcha” of Hadoop is that the HDFS instance has a canonical
-;; name associated with it, based on the DNS name of the machine — not
-;; its IP address. If you provide an IP address for the
-;; fs.default.name, it will reverse-DNS this back to a DNS name, then
-;; subsequent connections will perform a forward-DNS lookup on the
-;; canonical DNS name
-;;
-;; OTHER NOTES
-;;
-;; Hadoop cluster tips and tricks --
-;; http://allthingshadoop.com/2010/04/28/map-reduce-tips-tricks-your-first-real-cluster/
-;;
-;; Discussion of rack awareness --
-;; http://hadoop.apache.org/common/docs/r0.19.2/cluster_setup.html#Configuration+Files
-;;
-;; Hadoop tutorial --
-;; http://developer.yahoo.com/hadoop/tutorial/module7.html
-;;
-;; KEY NOTES;; From Noll link:
-;; http://www.mail-archive.com/common-user@hadoop.apache.org/msg00170.html
-;; http://search-hadoop.com/m/PcJ6xnNrSo1/Error+reading+task+output+http/v=threaded
-;; From a note here:
-;; http://www.michael-noll.com/tutorials/running-hadoop-on-ubuntu-linux-multi-node-cluster/#confmasters-master-only
-;;
-;; So, we can probably do this with etc/hosts.
+;; We've aliased `:slavenode` to `:datanode` and `:tasktracker`, as
+;; these usually come together.
+
+(def hadoop-aliases
+  {:slavenode [:datanode :tasktracker]})
+
+(defn expand-aliases
+  "Returns a sequence of hadoop roles, with any aliases replaced by
+  the corresponding roles. `:slavenode` is the only alias, currently,
+  and expands out to `:datanode` and `:tasktracker`."
+  [roles]
+  (flatten (replace hadoop-aliases (conj roles :default))))
+
+;; Hadoop requires certain ports to be accessible, as discussed
+;; [here](http://goo.gl/nKk3B) by the folks at Cloudera. We provide
+;; sets of ports that can be merged based on the hadoop roles that
+;; some node-spec wants to use.
+
+(def hadoop-ports
+  {:default #{22 80}
+   :namenode #{50070 8020}
+   :datanode #{50075 50010 50020}
+   :jobtracker #{50030 8021}
+   :tasktracker #{50060}
+   :secondarynamenode #{50090 50105}})
+
+(def ^{:doc "Set of all hadoop `master` level tags. Used to assign
+  default counts to master nodes, and to make sure that no more than
+  one of each exists."}
+  hadoop-masters
+  #{:namenode :jobtracker})
+
+(defn master?
+  "Predicate that determines whether or not the given sequence of
+  roles contains a master node tag."
+  [roleseq]
+  (boolean (some hadoop-masters roleseq)))
 
 (defn hadoop-phases
-  "TODO -- documentation here, on why we have the ip-type option! TODO
-  - -can we get this ip-type from the cluster definition, somehow?
-  Where does it need to exist, given that the configuration step is
-  the only only one that needs to know?"
+  "Returns a map of all possible hadoop phases. IP-type specifies "
   [ip-type jt-tag nn-tag properties]
   (let [configure (phase-fn []
                             (h/configure ip-type
@@ -113,50 +93,21 @@
      :start-namenode (phase-fn []
                                (h/name-node "/tmp/node-name/data"))}))
 
-;; Hadoop doesn't really have too many requirements for its nodes --
-;; we do have to layer a few properties onto the base nodespec,
-;; however. The ports are the most important element. If the user
-;; supplies some default set of ports, we'd like to some way to take
-;; the union of the required hadoop ports and the supplied ports from
-;; the base node. The following function converts all supplied
-;; sequences to sets, takes the union, and converts the results back
-;; into a vector. Any type of collection is fine, for `xs`.
-
-(defn merge-to-vec
-  "Returns a vector containing the union of all supplied collections."
-  [& xs]
-  (apply (comp vec union) (map set xs)))
-
-
-;; We've aliased `:slavenode` to `:datanode` and `:tasktracker`, as
-;; these usually come together.
-
-(def hadoop-aliases
-  {:slavenode [:datanode :tasktracker]})
-
-(defn expand-aliases
-  "Returns a sequence of hadoop roles, with any aliases replaced by
-  the corresponding roles. `:slavenode` is the only alias, currently,
-  and expands out to `:datanode` and `:tasktracker`."
-  [roles]
-  (flatten (replace hadoop-aliases (conj roles :default))))
+(def ^{:doc "Map of all hadoop roles to sets of required phases."}
+  role->phase-map
+  {:default #{:bootstrap
+              :reinstall
+              :configure
+              :reconfigure
+              :authorize-jobtracker}
+   :namenode #{:start-namenode}
+   :datanode #{:start-hdfs}
+   :jobtracker #{:publish-ssh-key :start-jobtracker}
+   :tasktracker #{:start-mapred}})
 
 ;; Finally, the big method! By providing a base node and a vector of
 ;; hadoop "roles", the user gets back a new node-spec with all
 ;; required hadoop modifications.
-
-;; Hadoop requires certain ports to be accessible, as discussed
-;; [here](http://goo.gl/nKk3B) by the folks at Cloudera. We provide
-;; sets of ports that can be merged based on the hadoop roles that
-;; some node-spec wants to use.
-
-(def hadoop-ports
-  {:default #{22 80}
-   :namenode #{50070 8020}
-   :datanode #{50075 50010 50020}
-   :jobtracker #{50030 8021}
-   :tasktracker #{50060}
-   :secondarynamenode #{50090 50105}})
 
 ;; TODO -- Is this going to get confusing? CAN WE ASSUME that all
 ;; aliases have been expanded, or will it clearer if we do otherwise?
@@ -170,30 +121,6 @@
     (merge-with merge-to-vec
                 base-spec
                 {:inbound-ports ports})))
-
-(def ^{:doc "Set of all hadoop `master` level tags. Used to assign
-  default counts to master nodes, and to make sure that no more than
-  one of each exists."}
-  hadoop-masters
-  #{:namenode :jobtracker})
-
-(defn master?
-  "Predicate that determines whether or not the given sequence of
-  roles contains a master node tag."
-  [roleseq]
-  (boolean (some hadoop-masters roleseq)))
-
-(def ^{:doc "Map of all hadoop roles to sets of required phases."}
-  role->phase-map
-  {:default #{:bootstrap
-              :reinstall
-              :configure
-              :reconfigure
-              :authorize-jobtracker}
-   :namenode #{:start-namenode}
-   :datanode #{:start-hdfs}
-   :jobtracker #{:publish-ssh-key :start-jobtracker}
-   :tasktracker #{:start-mapred}})
 
 (defn hadoop-server-spec
   "Returns a map of all all hadoop phases -- we'll need to modify the
@@ -219,7 +146,6 @@
         props (h/merge-config base-props props)
         phase-map (hadoop-server-spec ip-type jt-tag nn-tag props roles)
         phase-seq (apply concat phase-map)]
-    ;; (println tag machine-spec)
     (apply make-node tag machine-spec phase-seq)))
 
 (defn hadoop-node
@@ -274,39 +200,34 @@
   [cluster]
   (keys (cluster->node-map cluster :kill)))
 
-;; TODO -- add methods explaining cluster
-;; TODO -- simplify this
+;; ### High Level Converge and Lift
+
+;; TODO -- more description
 (defn converge-cluster
-  ([action cluster service env]
-     (converge (cluster->node-map cluster action)
-               :compute service
-               :environment env))
-  ([action phaseseq cluster service env]
-     (converge (cluster->node-map cluster action)
-               :compute service
-               :environment env
-               :phase phaseseq)))
+  [cluster action & options]
+  (apply (partial converge (cluster->node-map cluster action)) options))
 
-(def boot-cluster
-  (partial converge-cluster :boot [:configure
-                                   :publish-ssh-key
-                                   :authorize-jobtracker]))
+(defn boot-cluster [cluster & options]
+  (apply (partial converge-cluster cluster :boot :phase [:configure
+                                                         :publish-ssh-key
+                                                         :authorize-jobtracker])
+         options))
 
-(def kill-cluster
-  (partial converge-cluster :kill))
+(defn kill-cluster [cluster & options]
+  (apply (partial converge-cluster cluster :kill) options))
 
 (defn lift-cluster
-  [phaseseq cluster service env]
-  (lift (cluster->node-set cluster)
-        :compute service
-        :environment env
-        :phase phaseseq))
+  [cluster phaseseq & options]
+  (apply (partial lift (cluster->node-set cluster)
+                  :phase phaseseq)
+         options))
 
-(def start-cluster
-  (partial lift-cluster [:start-namenode
-                         :start-hdfs
-                         :start-jobtracker
-                         :start-mapred]))
+(defn start-cluster [cluster & options]
+  (apply (partial lift-cluster [:start-namenode
+                                :start-hdfs
+                                :start-jobtracker
+                                :start-mapred])
+         options))
 
 ;; EXPLAIN
 ;; TODO -- add overall cluster default hadoop properties.
@@ -335,11 +256,11 @@
 (def local-cluster (forma-cluster :public 0))
 
 (comment
-  (boot-cluster public-cluster env/vm-service env/vm-env)
-  (boot-cluster private-cluster env/ec2-service env/remote-env)
+  (boot-cluster public-cluster :compute env/vm-service :environment env/vm-env)
+  (boot-cluster private-cluster :compute env/ec2-service :environment env/remote-env)
 
-  (start-cluster public-cluster env/vm-service env/vm-env)
-  (start-cluster private-cluster env/ec2-service env/remote-env)
+  (start-cluster public-cluster :compute env/vm-service :environment env/vm-env)
+  (start-cluster private-cluster :compute env/ec2-service :environment env/remote-env)
 
-  (kill-cluster public-cluster env/vm-service env/vm-env)
-  (kill-cluster private-cluster env/ec2-service env/remote-env))
+  (kill-cluster public-cluster :compute env/vm-service :environment env/vm-env)
+  (kill-cluster private-cluster :compute env/ec2-service :environment env/remote-env))
