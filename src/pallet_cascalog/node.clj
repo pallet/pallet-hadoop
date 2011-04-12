@@ -122,14 +122,20 @@
                 base-spec
                 {:inbound-ports ports})))
 
+(defn roles->phases
+  "Converts a sequence of hadoop roles into a sequence of the unique
+  phases required by a node trying to take on each of these roles."
+  [roles]
+  (apply merge-to-vec
+         (map role->phase-map roles)))
+
 (defn hadoop-server-spec
   "Returns a map of all all hadoop phases -- we'll need to modify the
   name, here, and change this to compose with over server-specs."
   [ip-type jt-tag nn-tag properties roles]
-  (let [phasemap (hadoop-phases ip-type jt-tag nn-tag properties)]
-    (select-keys phasemap
-                 (apply merge-to-vec
-                        (map role->phase-map roles)))))
+  (let [all-phases (hadoop-phases ip-type jt-tag nn-tag properties)]
+    (select-keys all-phases
+                 (roles->phases roles))))
 
 ;; We have a precondition here that makes sure at least one of the
 ;;defined roles exists as a hadoop roles.
