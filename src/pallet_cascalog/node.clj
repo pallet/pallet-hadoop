@@ -222,12 +222,13 @@
 ;; TODO -- is this the best way to check that all roles are fulfilled?
 (defn hadoop-spec
   "Equivalent to `server-spec` in the new pallet."
-  [tag ip-type jt-tag nn-tag base-spec {:keys [spec roles props]
-                                        :or {spec {}
-                                             props {}}}]
+  [tag ip-type jt-tag nn-tag base-spec base-props {:keys [spec roles props]
+                                                   :or {spec {}
+                                                        props {}}}]
   {:pre [(some (set (keys role->phase-map)) (expand-aliases roles))]}
   (let [roles (expand-aliases roles)
-        spec (merge base-spec spec)]
+        spec (merge base-spec spec)
+        props (hadoop/merge-config base-props props)]
     (apply core/make-node
            tag
            (hadoop-machine-spec spec roles)
@@ -267,14 +268,12 @@
     :boot => uses the counts defined in the cluster
     :kill => sets map values to zero, effectively killing the cluster on converge."
   [cluster task]
-  (let [[node-defs base-spec ip-type] (map cluster
-                                           [:nodedefs :base-machine-spec :ip-type])
+  (let [[node-defs base-spec base-props ip-type] (map cluster [:nodedefs :base-machine-spec :base-props :ip-type])
         [jt-tag nn-tag] (roles->tags [:jobtracker :namenode] node-defs)]
     (into {}
           (for [[tag config] node-defs
                 :let [[count node] (map config [:count :node])
-                      node-def (hadoop-spec tag ip-type jt-tag nn-tag
-                                            base-spec node)]]
+                      node-def (hadoop-spec tag ip-type jt-tag nn-tag base-spec base-props node)]]
             (case task
                   :boot [node-def count]
                   :kill [node-def 0])))))
@@ -325,6 +324,7 @@
 ;; TODO -- add overall cluster default hadoop properties.
 (def example-cluster-spec
   {:base-machine-spec {}
+   :base-props {}
    :ip-type :private
    :nodedefs {:namenode    (hadoop-node [:namenode :slavenode] 1)
               :jobtracker  (hadoop-node [:jobtracker :slavenode])
@@ -333,6 +333,7 @@
 
 (defn cluster-spec [ip-type nodecount]
   {:base-machine-spec {}
+   :base-props {}
    :ip-type ip-type
    :nodedefs {:namenode    (hadoop-node [:namenode :slavenode] 1)
               :jobtracker  (hadoop-node [:jobtracker :slavenode])
