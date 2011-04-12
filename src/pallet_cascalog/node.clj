@@ -200,10 +200,9 @@
   name, here, and change this to compose with over server-specs."
   [ip-type jt-tag nn-tag properties roles]
   (let [phasemap (hadoop-phases ip-type jt-tag nn-tag properties)]
-    (apply concat
-           (select-keys phasemap
-                        (apply merge-to-vec
-                               (map role->phase-map roles))))))
+    (select-keys phasemap
+                 (apply merge-to-vec
+                        (map role->phase-map roles)))))
 
 ;; We have a precondition here that makes sure at least one of the
 ;;defined roles exists as a hadoop roles.
@@ -216,12 +215,12 @@
                                                         props {}}}]
   {:pre [(some (set (keys role->phase-map)) (expand-aliases roles))]}
   (let [roles (expand-aliases roles)
-        spec (merge base-spec spec)
-        props (h/merge-config base-props props)]
-    (apply make-node
-           tag
-           (hadoop-machine-spec spec roles)
-           (hadoop-server-spec ip-type jt-tag nn-tag props roles))))
+        machine-spec (hadoop-machine-spec (merge base-spec spec) roles)
+        props (h/merge-config base-props props)
+        phase-map (hadoop-server-spec ip-type jt-tag nn-tag props roles)
+        phase-seq (apply concat phase-map)]
+    ;; (println tag machine-spec)
+    (apply make-node tag machine-spec phase-seq)))
 
 (defn hadoop-node
   "Generates a map representation of a Hadoop node, employing sane defaults."
