@@ -140,7 +140,13 @@
 ;; We have a precondition here that makes sure at least one of the
 ;;defined roles exists as a hadoop roles.
 ;;
-;; TODO -- is this the best way to check that all roles are fulfilled?
+                                        ;
+;; We need to provide a way for the user to send in a base server-spec
+;;and a base machine-spec, so we can layer on top of those.
+;;
+;; TODO -- take tag, ip-type, jt-tag, spec, etc... don't merge within
+;;here. Do that in describe, or something.
+
 (defn hadoop-spec
   "Equivalent to `server-spec` in the new pallet."
   [tag ip-type jt-tag nn-tag base-spec base-props {:keys [spec roles props]
