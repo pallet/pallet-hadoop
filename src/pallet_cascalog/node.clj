@@ -1,7 +1,7 @@
 (ns pallet-cascalog.node
   (:use [pallet.crate.automated-admin-user
          :only (automated-admin-user)]
-        [pallet.crate.hadoop :only (phase)]
+        [pallet.crate.hadoop :only (phase-fn)]
         [clojure.pprint :only (pprint)]
         [clojure.set :only (union)])
   (:require [pallet-cascalog.environments :as env]
@@ -101,17 +101,17 @@
   Where does it need to exist, given that the configuration step is
   the only only one that needs to know?"
   [ip-type jt-tag nn-tag properties]
-  (let [configure (phase
+  (let [configure (phase-fn []
                    (hadoop/configure ip-type
                                      nn-tag
                                      jt-tag
                                      properties))]
     {:bootstrap automated-admin-user
-     :configure (phase
+     :configure (phase-fn []
                  (java/java :jdk)
                  hadoop/install
                  configure)
-     :reinstall (phase
+     :reinstall (phase-fn []
                  hadoop/install
                  configure)
      :reconfigure configure
@@ -120,7 +120,7 @@
      :start-mapred hadoop/task-tracker
      :start-hdfs hadoop/data-node
      :start-jobtracker hadoop/job-tracker
-     :start-namenode (phase
+     :start-namenode (phase-fn []
                       (hadoop/name-node "/tmp/node-name/data"))}))
 
 ;; Hadoop doesn't really have too many requirements for its nodes --
@@ -141,7 +141,8 @@
 ;; We've aliased `:slavenode` to `:datanode` and `:tasktracker`, as
 ;; these usually come together.
 
-(def hadoop-aliases {:slavenode [:datanode :tasktracker]})
+(def hadoop-aliases
+  {:slavenode [:datanode :tasktracker]})
 
 (defn expand-aliases
   "Returns a sequence of hadoop roles, with any aliases replaced by
@@ -159,12 +160,13 @@
 ;; sets of ports that can be merged based on the hadoop roles that
 ;; some node-spec wants to use.
 
-(def hadoop-ports {:default #{22 80}
-                   :namenode #{50070 8020}
-                   :datanode #{50075 50010 50020}
-                   :jobtracker #{50030 8021}
-                   :tasktracker #{50060}
-                   :secondarynamenode #{50090 50105}})
+(def hadoop-ports
+  {:default #{22 80}
+   :namenode #{50070 8020}
+   :datanode #{50075 50010 50020}
+   :jobtracker #{50030 8021}
+   :tasktracker #{50060}
+   :secondarynamenode #{50090 50105}})
 
 ;; TODO -- Is this going to get confusing? CAN WE ASSUME that all
 ;; aliases have been expanded, or will it clearer if we do otherwise?
@@ -179,18 +181,19 @@
                 base-spec
                 {:inbound-ports ports})))
 
-(def hadoop-masters ^{:doc "Set of all hadoop `master` level
-  tags. Used to assign default counts to master nodes, and to make
-  sure that no more than one of each exists."}
+(def ^{:doc "Set of all hadoop `master` level tags. Used to assign
+  default counts to master nodes, and to make sure that no more than
+  one of each exists."}
+  hadoop-masters
   #{:namenode :jobtracker})
+
 (defn master?
   "Predicate that determines whether or not the given sequence of
   roles contains a master node tag."
   [roleseq]
   (boolean (some hadoop-masters roleseq)))
 
-(def
-  ^{:doc "Map of all hadoop roles to sets of required phases."}
+(def ^{:doc "Map of all hadoop roles to sets of required phases."}
   role->phase-map
   {:default #{:bootstrap
               :reinstall
@@ -318,6 +321,7 @@
                          :start-jobtracker
                          :start-mapred]))
 
+;; EXPLAIN
 ;; TODO -- add overall cluster default hadoop properties.
 (def example-cluster-spec
   {:base-machine-spec {}
@@ -327,21 +331,22 @@
               :slaves      (slave-node 1)
               :spot-slaves (slave-node 5 :base-spec {:spot-price (float 0.03)})}})
 
-(defn cluster-spec [nodecount]
+(defn cluster-spec [ip-type nodecount]
   {:base-machine-spec {}
-   :ip-type :private
+   :ip-type ip-type
    :nodedefs {:namenode    (hadoop-node [:namenode :slavenode] 1)
               :jobtracker  (hadoop-node [:jobtracker :slavenode])
               :slaves      (slave-node nodecount)}})
 
-(def test-cluster (cluster-spec 0))
-;; How to use this thing...
+(def private-cluster (cluster-spec :private 0))
+(def public-cluster (cluster-spec :public 0))
+
 (comment
-  ;; (boot-cluster test-cluster env/vm-service env/vm-env)
-  (boot-cluster test-cluster env/ec2-service env/remote-env)
+  (boot-cluster public-cluster env/vm-service env/vm-env)
+  (boot-cluster private-cluster env/ec2-service env/remote-env)
 
-  ;; (start-cluster test-cluster env/vm-service env/vm-env)
-  (start-cluster test-cluster env/ec2-service env/remote-env)
+  (start-cluster public-cluster env/vm-service env/vm-env)
+  (start-cluster private-cluster env/ec2-service env/remote-env)
 
-  ;; (kill-cluster test-cluster env/vm-service env/vm-env)
-  (kill-cluster test-cluster env/ec2-service env/remote-env))
+  (kill-cluster public-cluster env/vm-service env/vm-env)
+  (kill-cluster private-cluster env/ec2-service env/remote-env))
