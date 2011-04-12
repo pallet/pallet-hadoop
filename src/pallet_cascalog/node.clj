@@ -1,15 +1,12 @@
 (ns pallet-cascalog.node
-  (:use [pallet.crate.automated-admin-user
-         :only (automated-admin-user)]
+  (:use [pallet.crate.automated-admin-user :only (automated-admin-user)]
         [pallet.crate.hadoop :only (phase-fn)]
+        [pallet.crate.java :only (java)]
+        [pallet.core :only (make-node lift converge)]
         [clojure.pprint :only (pprint)]
         [clojure.set :only (union)])
   (:require [pallet-cascalog.environments :as env]
-            [pallet.compute :as compute]
-            [pallet.core :as core]
-            [pallet.crate.hadoop :as hadoop]
-            [pallet.crate.java :as java]
-            pallet.compute.vmfest))
+            [pallet.crate.hadoop :as h]))
 
 ;; ## Hadoop Cluster Configuration
 
@@ -95,26 +92,26 @@
   the only only one that needs to know?"
   [ip-type jt-tag nn-tag properties]
   (let [configure (phase-fn []
-                   (hadoop/configure ip-type
-                                     nn-tag
-                                     jt-tag
-                                     properties))]
+                            (h/configure ip-type
+                                         nn-tag
+                                         jt-tag
+                                         properties))]
     {:bootstrap automated-admin-user
      :configure (phase-fn []
-                 (java/java :jdk)
-                 hadoop/install
-                 configure)
+                          (java :jdk)
+                          h/install
+                          configure)
      :reinstall (phase-fn []
-                 hadoop/install
-                 configure)
+                          h/install
+                          configure)
      :reconfigure configure
-     :publish-ssh-key hadoop/publish-ssh-key
-     :authorize-jobtracker hadoop/authorize-jobtracker
-     :start-mapred hadoop/task-tracker
-     :start-hdfs hadoop/data-node
-     :start-jobtracker hadoop/job-tracker
+     :publish-ssh-key h/publish-ssh-key
+     :authorize-jobtracker h/authorize-jobtracker
+     :start-mapred h/task-tracker
+     :start-hdfs h/data-node
+     :start-jobtracker h/job-tracker
      :start-namenode (phase-fn []
-                      (hadoop/name-node "/tmp/node-name/data"))}))
+                               (h/name-node "/tmp/node-name/data"))}))
 
 ;; Hadoop doesn't really have too many requirements for its nodes --
 ;; we do have to layer a few properties onto the base nodespec,
@@ -221,7 +218,7 @@
   {:pre [(some (set (keys role->phase-map)) (expand-aliases roles))]}
   (let [roles (expand-aliases roles)
         spec (merge base-spec spec)
-        props (hadoop/merge-config base-props props)]
+        props (h/merge-config base-props props)]
     (apply core/make-node
            tag
            (hadoop-machine-spec spec roles)
@@ -336,8 +333,8 @@
                  :slaves      (slave-node nodecount)}
                 :base-props {}))
 
-(def private-cluster (forma-cluster :private 0))
-(def public-cluster (forma-cluster :public 0))
+(def remote-cluster (forma-cluster :private 0))
+(def local-cluster (forma-cluster :public 0))
 
 (comment
   (boot-cluster public-cluster env/vm-service env/vm-env)
