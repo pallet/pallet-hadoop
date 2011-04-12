@@ -11,13 +11,6 @@
             [pallet.crate.java :as java]
             pallet.compute.vmfest))
 
-(defn debug [req comment & [key-vec]]
-  (do (println "***" comment (or key-vec "(full request)"))
-      (if key-vec
-        (pprint (get-in req key-vec))
-        (pprint req))
-      req))
-
 ;; ## Hadoop Cluster Configuration
 
 ;; NOTES:
@@ -322,25 +315,29 @@
 
 ;; EXPLAIN
 ;; TODO -- add overall cluster default hadoop properties.
+(defn cluster-spec [ip-type nodedefs & {:keys [base-machine-spec base-props]
+                                        :or [base-machine-spec {}
+                                             base-props {}]
+                                        :as options}]
+  (merge options {:ip-type ip-type
+                  :nodedefs nodedefs}))
+
 (def example-cluster-spec
-  {:base-machine-spec {}
-   :base-props {}
-   :ip-type :private
-   :nodedefs {:namenode    (hadoop-node [:namenode :slavenode] 1)
-              :jobtracker  (hadoop-node [:jobtracker :slavenode])
-              :slaves      (slave-node 1)
-              :spot-slaves (slave-node 5 :base-spec {:spot-price (float 0.03)})}})
+  (cluster-spec :private
+                {:namenode    (hadoop-node [:namenode :slavenode] 1)
+                 :jobtracker  (hadoop-node [:jobtracker :slavenode])
+                 :slaves      (slave-node 1)
+                 :spot-slaves (slave-node 5 :base-spec {:spot-price (float 0.03)})}))
 
-(defn cluster-spec [ip-type nodecount]
-  {:base-machine-spec {}
-   :base-props {}
-   :ip-type ip-type
-   :nodedefs {:namenode    (hadoop-node [:namenode :slavenode] 1)
-              :jobtracker  (hadoop-node [:jobtracker :slavenode])
-              :slaves      (slave-node nodecount)}})
+(defn forma-cluster [ip-type nodecount]
+  (cluster-spec ip-type
+                {:namenode    (hadoop-node [:namenode :slavenode] 1)
+                 :jobtracker  (hadoop-node [:jobtracker :slavenode])
+                 :slaves      (slave-node nodecount)}
+                :base-props {}))
 
-(def private-cluster (cluster-spec :private 0))
-(def public-cluster (cluster-spec :public 0))
+(def private-cluster (forma-cluster :private 0))
+(def public-cluster (forma-cluster :public 0))
 
 (comment
   (boot-cluster public-cluster env/vm-service env/vm-env)
