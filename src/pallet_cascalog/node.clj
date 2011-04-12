@@ -199,8 +199,7 @@
   "Returns a map of all all hadoop phases -- we'll need to modify the
   name, here, and change this to compose with over server-specs."
   [ip-type jt-tag nn-tag properties roles]
-  (let [phasemap (hadoop-phases ip-type jt-tag
-                                nn-tag properties)]
+  (let [phasemap (hadoop-phases ip-type jt-tag nn-tag properties)]
     (apply concat
            (select-keys phasemap
                         (apply merge-to-vec
@@ -219,7 +218,7 @@
   (let [roles (expand-aliases roles)
         spec (merge base-spec spec)
         props (h/merge-config base-props props)]
-    (apply core/make-node
+    (apply make-node
            tag
            (hadoop-machine-spec spec roles)
            (hadoop-server-spec ip-type jt-tag nn-tag props roles))))
@@ -280,14 +279,14 @@
 ;; TODO -- simplify this
 (defn converge-cluster
   ([action cluster service env]
-     (core/converge (cluster->node-map cluster action)
-                    :compute service
-                    :environment env))
+     (converge (cluster->node-map cluster action)
+               :compute service
+               :environment env))
   ([action phaseseq cluster service env]
-     (core/converge (cluster->node-map cluster action)
-                    :compute service
-                    :environment env
-                    :phase phaseseq)))
+     (converge (cluster->node-map cluster action)
+               :compute service
+               :environment env
+               :phase phaseseq)))
 
 (def boot-cluster
   (partial converge-cluster :boot [:configure
@@ -299,10 +298,10 @@
 
 (defn lift-cluster
   [phaseseq cluster service env]
-  (core/lift (cluster->node-set cluster)
-             :compute service
-             :environment env
-             :phase phaseseq))
+  (lift (cluster->node-set cluster)
+        :compute service
+        :environment env
+        :phase phaseseq))
 
 (def start-cluster
   (partial lift-cluster [:start-namenode
