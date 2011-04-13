@@ -2,7 +2,7 @@
   (:use [pallet.crate.automated-admin-user :only (automated-admin-user)]
         [pallet.crate.hadoop :only (phase-fn)]
         [pallet.crate.java :only (java)]
-        [pallet.core :only (make-node lift converge)]
+        [pallet.core :only (defnode make-node lift converge)]
         [clojure.pprint :only (pprint)]
         [clojure.set :only (union)])
   (:require [pallet-cascalog.environments :as env]
@@ -27,7 +27,6 @@
   (apply (comp vec union) (map set xs)))
 
 ;; TODO -- discuss aliasing.
-
 ;; ### Defaults
 ;;
 ;; We've aliased `:slavenode` to `:datanode` and `:tasktracker`, as
