@@ -305,16 +305,18 @@
 (defn forma-cluster [ip-type nodecount]
   (let [lib-path (str fw-path "/usr/lib")]
     (cluster-spec ip-type
-                  {:namenode    (hadoop-node [:namenode])
-                   :jobtracker  (hadoop-node [:jobtracker])
-                   :slaves      (slave-node nodecount)}
-                  :base-machine-spec {:image-id "us-east-1a/ami-e0a15d89"}
+                  {:master (hadoop-node [:namenode :jobtracker])
+                   :slaves (slave-node nodecount)}
+                  :base-machine-spec {:image-id "us-east-1/ami-321eed5b"
+                                      :hardware-id "cc1.4xlarge"
+                                      :spot-price (float 1.60)}
                   :base-props {:hadoop-env {:JAVA_LIBRARY_PATH native-path
                                             :LD_LIBRARY_PATH lib-path}
                                :hdfs-site {:dfs.data.dir "/mnt/dfs/data"
                                            :dfs.name.dir "/mnt/dfs/name"}
                                :core-site {:io.serializations serializers}
-                               :mapred-site {:mapred.reduce.tasks 80
+                               :mapred-site {:maped.tasks.timeout 300000
+                                             :mapred.reduce.tasks 
                                              :mapred.tasktracker.map.tasks.maximum 7
                                              :mapred.tasktracker.reduce.tasks.maximum 7
                                              :mapred.child.java.opts (str "-Djava.library.path=" native-path " -Xmx512m")
