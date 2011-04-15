@@ -1,6 +1,6 @@
 (ns pallet-cascalog.node
   (:use [pallet.crate.automated-admin-user :only (automated-admin-user)]
-        [pallet.crate.hadoop :only (phase-fn def-phase-fn)]
+        [pallet.crate.hadoop :only (phase def-phase-fn)]
         [pallet.crate.java :only (java)]
         [pallet.core :only (defnode make-node lift converge)]
         [clojure.pprint :only (pprint)]
@@ -77,27 +77,24 @@
 (defn hadoop-phases
   "Returns a map of all possible hadoop phases. IP-type specifies "
   [ip-type jt-tag nn-tag properties]
-  (let [configure (phase-fn []
-                            (h/configure ip-type
-                                         nn-tag
-                                         jt-tag
-                                         properties))]
+  (let [configure (phase
+                   (h/configure ip-type
+                                nn-tag
+                                jt-tag
+                                properties))]
     {:bootstrap automated-admin-user
-     :configure (phase-fn []
-                          (java :jdk)
-                          (h/install :cloudera)
-                          configure)
-     :reinstall (phase-fn []
-                          (h/install :cloudera)
-                          configure)
+     :configure (phase (java :jdk)
+                       (h/install :cloudera)
+                       configure)
+     :reinstall (phase (h/install :cloudera)
+                       configure)
      :reconfigure configure
      :publish-ssh-key h/publish-ssh-key
      :authorize-jobtracker h/authorize-jobtracker
      :start-mapred h/task-tracker
      :start-hdfs h/data-node
      :start-jobtracker h/job-tracker
-     :start-namenode (phase-fn []
-                               (h/name-node "/tmp/node-name/data"))}))
+     :start-namenode (phase (h/name-node "/tmp/node-name/data"))}))
 
 (def ^{:doc "Map of all hadoop roles to sets of required phases."}
   role->phase-map
