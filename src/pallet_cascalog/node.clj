@@ -1,12 +1,14 @@
 (ns pallet-cascalog.node
   (:use [pallet.crate.automated-admin-user :only (automated-admin-user)]
-        [pallet.crate.hadoop :only (phase-fn)]
+        [pallet.crate.hadoop :only (phase-fn def-phase-fn)]
         [pallet.crate.java :only (java)]
         [pallet.core :only (defnode make-node lift converge)]
         [clojure.pprint :only (pprint)]
         [clojure.set :only (union)])
   (:require [pallet-cascalog.environments :as env]
-            [pallet.crate.hadoop :as h]))
+            [pallet.crate.hadoop :as h]
+            [pallet.resource.remote-directory :as rd]
+            [pallet.resource.package :as package]))
 
 ;; ## Hadoop Cluster Configuration
 
@@ -24,6 +26,7 @@
 (defn merge-to-vec
   "Returns a vector containing the union of all supplied collections."
   [& xs]
+  (println xs)
   (apply (comp vec union) (map set xs)))
 
 ;; TODO -- discuss aliasing.
@@ -67,6 +70,10 @@
   [roleseq]
   (boolean (some hadoop-masters roleseq)))
 
+;; TODO -- version should be a property, with a default! something
+;; like {:keys [version] :or [version :cloudera]}.
+;;
+
 (defn hadoop-phases
   "Returns a map of all possible hadoop phases. IP-type specifies "
   [ip-type jt-tag nn-tag properties]
@@ -78,10 +85,10 @@
     {:bootstrap automated-admin-user
      :configure (phase-fn []
                           (java :jdk)
-                          h/install
+                          (h/install :cloudera)
                           configure)
      :reinstall (phase-fn []
-                          h/install
+                          (h/install :cloudera)
                           configure)
      :reconfigure configure
      :publish-ssh-key h/publish-ssh-key
@@ -116,7 +123,7 @@
   basenode with the required properties for the defined hadoop
   roles. (We assume at this point that all aliases have been expanded.)"
   [base-spec roles]
-  (let [ports (apply merge-to-vec (map hadoop-ports roles))]
+  (let [ports ((comp vec distinct) (mapcat hadoop-ports roles))]
     (merge-with merge-to-vec
                 base-spec
                 {:inbound-ports ports})))
@@ -125,8 +132,7 @@
   "Converts a sequence of hadoop roles into a sequence of the unique
   phases required by a node trying to take on each of these roles."
   [roles]
-  (apply merge-to-vec
-         (map role->phase-map roles)))
+  ((comp vec distinct) (mapcat role->phase-map roles)))
 
 (defn hadoop-server-spec
   "Returns a map of all all hadoop phases -- we'll need to modify the
@@ -219,9 +225,10 @@
   (apply (partial converge (cluster->node-map cluster action)) options))
 
 (defn boot-cluster [cluster & options]
-  (apply (partial converge-cluster cluster :boot :phase [:configure
-                                                         :publish-ssh-key
-                                                         :authorize-jobtracker])
+  (apply (partial converge-cluster cluster :boot
+                  :phase [:configure
+                          :publish-ssh-key
+                          :authorize-jobtracker])
          options))
 
 (defn kill-cluster [cluster & options]
@@ -251,27 +258,86 @@
 
 (def example-cluster-spec
   (cluster-spec :private
-                {:namenode    (hadoop-node [:namenode :slavenode] 1)
+                {:namenode    (hadoop-node [:namenode :slavenode])
                  :jobtracker  (hadoop-node [:jobtracker :slavenode])
                  :slaves      (slave-node 1)
-                 :spot-slaves (slave-node 5 :base-spec {:spot-price (float 0.03)})}))
+                 :spot-slaves (slave-node 5 :base-spec {:spot-price (float 0.03)})}
+                :base-props {:hadoop-env {:JAVA_LIBRARY_PATH "path/to/java/libs"
+                                          :LD_LIBRARY_PATH    "some/required/libs"}
+                             :mapred-site {:mapred.child.java.opts "-Djava.library.path=path/to/java/libs"
+                                           :mapred.child.env       "LD_LIBRARY_PATH=some/required/libs"}}))
+
+;; ### Actual Job Run
+;;
+;; First, a test cluster. I ran this last night, and all worked wonderfully.
+
+(def-phase-fn install-redd-configs
+  "Takes pairs of strings -- the first should be a filename in the
+  `reddconfig` bucket on s3, and the second should be the unpacking
+  directory on the node."
+  [& filename-localpath-pairs]
+  (for [[remote local] (partition 2 filename-localpath-pairs)]
+    (rd/remote-directory local
+                         :url (str "https://reddconfig.s3.amazonaws.com/" remote)
+                         :unpack :tar
+                         :tar-options "xz"
+                         :strip-components 2
+                         :owner h/hadoop-user
+                         :group h/hadoop-user)))
+
+
+(def fw-path "/usr/local/fwtools")
+(def native-path "/home/hadoop/native")
+(def serializers
+  (apply str (interpose "," ["forma.FloatsSerialization"
+                             "forma.IntsSerialization"
+                             "cascading.tuple.hadoop.BytesSerialization"
+                             "cascading.tuple.hadoop.TupleSerialization"
+                             "org.apache.hadoop.io.serializer.WritableSerialization"
+                             "org.apache.hadoop.io.serializer.JavaSerialization"])))
+
+(def-phase-fn config-redd
+  "This phase installs the two files that we need to make redd run
+  with gdal! We do need some better documentation, here."
+  []
+  (package/package "libhdf4-dev")
+  (install-redd-configs
+   "FWTools-linux-x86_64-4.0.0.tar.gz" fw-path
+   "linuxnative.tar.gz" native-path))
 
 (defn forma-cluster [ip-type nodecount]
-  (cluster-spec ip-type
-                {:namenode    (hadoop-node [:namenode :slavenode] 1)
-                 :jobtracker  (hadoop-node [:jobtracker :slavenode])
-                 :slaves      (slave-node nodecount)}
-                :base-props {}))
-
-(def remote-cluster (forma-cluster :private 0))
+  (let [lib-path (str fw-path "/usr/lib")]
+    (cluster-spec ip-type
+                  {:namenode    (hadoop-node [:namenode])
+                   :jobtracker  (hadoop-node [:jobtracker])
+                   :slaves      (slave-node nodecount)}
+                  :base-machine-spec {:image-id "us-east-1a/ami-e0a15d89"}
+                  :base-props {:hadoop-env {:JAVA_LIBRARY_PATH native-path
+                                            :LD_LIBRARY_PATH lib-path}
+                               :hdfs-site {:dfs.data.dir "/mnt/dfs/data"
+                                           :dfs.name.dir "/mnt/dfs/name"}
+                               :core-site {:io.serializations serializers}
+                               :mapred-site {:mapred.reduce.tasks 80
+                                             :mapred.tasktracker.map.tasks.maximum 7
+                                             :mapred.tasktracker.reduce.tasks.maximum 7
+                                             :mapred.child.java.opts (str "-Djava.library.path=" native-path " -Xmx512m")
+                                             :mapred.child.env (str "LD_LIBRARY_PATH=" lib-path)}})))
+;; Then, some example clusters!
+(def remote-cluster (forma-cluster :private 20))
 (def local-cluster (forma-cluster :public 0))
 
-(comment
-  (boot-cluster public-cluster :compute env/vm-service :environment env/vm-env)
-  (boot-cluster private-cluster :compute env/ec2-service :environment env/remote-env)
+;; TODO -- gotta fix start-cluster
+(comment "Commands for getting a remote cluster started"
+         (boot-cluster remote-cluster :compute env/ec2-service :environment env/remote-env)
+         (lift-cluster remote-cluster config-redd :compute env/ec2-service :environment env/remote-env)
+         (lift-cluster remote-cluster [:start-namenode
+                                       :start-hdfs
+                                       :start-jobtracker
+                                       :start-mapred]
+                       :compute env/ec2-service :environment env/remote-env)
+         (kill-cluster remote-cluster :compute env/ec2-service :environment env/remote-env))
 
-  (start-cluster public-cluster :compute env/vm-service :environment env/vm-env)
-  (start-cluster private-cluster :compute env/ec2-service :environment env/remote-env)
-
-  (kill-cluster public-cluster :compute env/vm-service :environment env/vm-env)
-  (kill-cluster private-cluster :compute env/ec2-service :environment env/remote-env))
+(comment "local!"
+         (boot-cluster local-cluster :compute env/vm-service :environment env/vm-env)
+         (start-cluster local-cluster :compute env/vm-service :environment env/vm-env)
+         (kill-cluster local-cluster :compute env/vm-service :environment env/vm-env))
