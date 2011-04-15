@@ -319,22 +319,16 @@
                                              :mapred.tasktracker.reduce.tasks.maximum 7
                                              :mapred.child.java.opts (str "-Djava.library.path=" native-path " -Xmx512m")
                                              :mapred.child.env (str "LD_LIBRARY_PATH=" lib-path)}})))
-;; Then, some example clusters!
-(def remote-cluster (forma-cluster :private 20))
-(def local-cluster (forma-cluster :public 0))
 
-;; TODO -- gotta fix start-cluster
-(comment "Commands for getting a remote cluster started"
-         (boot-cluster remote-cluster :compute env/ec2-service :environment env/remote-env)
-         (lift-cluster remote-cluster config-redd :compute env/ec2-service :environment env/remote-env)
-         (lift-cluster remote-cluster [:start-namenode
-                                       :start-hdfs
-                                       :start-jobtracker
-                                       :start-mapred]
-                       :compute env/ec2-service :environment env/remote-env)
-         (kill-cluster remote-cluster :compute env/ec2-service :environment env/remote-env))
+(defn forma-boot [node-count]
+  (let [cluster (forma-cluster :private node-count)]
+    (do (boot-cluster cluster :compute env/ec2-service :environment env/remote-env)
+        (lift-cluster cluster [config-redd
+                               :start-namenode
+                               :start-hdfs
+                               :start-jobtracker
+                               :start-mapred]
+                      :compute env/ec2-service :environment env/remote-env))))
 
-(comment "local!"
-         (boot-cluster local-cluster :compute env/vm-service :environment env/vm-env)
-         (start-cluster local-cluster :compute env/vm-service :environment env/vm-env)
-         (kill-cluster local-cluster :compute env/vm-service :environment env/vm-env))
+(defn forma-kill []
+  (kill-cluster (forma-cluster :private 0) :compute env/ec2-service :environment env/remote-env))
