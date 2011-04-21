@@ -5,7 +5,6 @@
   (:require [pallet.compute :as compute]
             [pallet.core :as core])
   (:import [java.net InetAddress]))
-
 ;; ### Local Environment
 
 (def vm-service
