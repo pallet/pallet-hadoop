@@ -1,6 +1,6 @@
 (ns pallet-cascalog.core
   (:use pallet-cascalog.node
-        [pallet.crate.hadoop :only (def-phase-fn)])
+        [pallet.crate.hadoop :only (def-phase-fn phase hadoop-user)])
   (:require [pallet-cascalog.environments :as env]
             [pallet.resource.remote-directory :as rd]
             [pallet.resource.package :as package]))
@@ -20,8 +20,8 @@
                          :unpack :tar
                          :tar-options "xz"
                          :strip-components 2
-                         :owner h/hadoop-user
-                         :group h/hadoop-user)))
+                         :owner hadoop-user
+                         :group hadoop-user)))
 
 
 (def fw-path "/usr/local/fwtools")
@@ -46,12 +46,13 @@
 (defn forma-cluster [ip-type nodecount]
   (let [lib-path (str fw-path "/usr/lib")]
     (cluster-spec ip-type
-                  {:master (hadoop-node [:namenode :jobtracker])
+                  {:jobtracker (hadoop-node [:jobtracker :slavenode])
+                   :namenode (hadoop-node [:namenode :slavenode])
                    :slaves (slave-node nodecount)}
                   :base-machine-spec {:os-family :ubuntu
                                       :os-version-matches "10.10"
                                       :os-64-bit true
-                                      :hardware-id "cc1.4xlarge"
+                                      ;; :hardware-id "cc1.4xlarge"
                                         ; :image-id "us-east-1/ami-321eed5b"
                                         ; :spot-price (float 1.60)
                                       }
@@ -61,7 +62,7 @@
                                ;;             :dfs.name.dir "/mnt/dfs/name"}
                                :core-site {:io.serializations serializers}
                                :mapred-site {:mapred.tasks.timeout 300000
-                                             :mapred.reduce.tasks 
+                                             :mapred.reduce.tasks 50
                                              :mapred.tasktracker.map.tasks.maximum 7
                                              :mapred.tasktracker.reduce.tasks.maximum 7
                                              :mapred.child.java.opts (str "-Djava.library.path=" native-path " -Xmx512m")

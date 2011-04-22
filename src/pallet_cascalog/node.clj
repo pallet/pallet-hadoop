@@ -86,7 +86,7 @@
                        configure)
      :reconfigure configure
      :publish-ssh-key h/publish-ssh-key
-     :authorize-jobtracker h/authorize-jobtracker
+     :authorize-jobtracker (phase (h/authorize-tag jt-tag))
      :start-mapred h/task-tracker
      :start-hdfs h/data-node
      :start-jobtracker h/job-tracker
