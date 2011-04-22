@@ -234,10 +234,10 @@
          options))
 
 (defn start-cluster [cluster & options]
-  (apply (partial lift-cluster [:start-namenode
-                                :start-hdfs
-                                :start-jobtracker
-                                :start-mapred])
+  (apply (partial lift-cluster cluster [:start-namenode
+                                        :start-hdfs
+                                        :start-jobtracker
+                                        :start-mapred])
          options))
 
 ;; EXPLAIN

@@ -25,7 +25,9 @@
                         {:os-family :ubuntu
                          :os-64-bit true}}]
     {:tags (zipmap [:hadoop :namenode :jobtracker :slavenode]
-                   (repeat default-image))}))
+                   (repeat default-image))
+     :algorithms {:lift-fn pallet.core/parallel-lift
+                  :converge-fn pallet.core/parallel-adjust-node-counts}}))
 
 (def local-node-specs
   (merge remote-env
