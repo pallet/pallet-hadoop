@@ -1,46 +1,81 @@
 (ns pallet-cascalog.core
-  (:use [pallet.resource :only (phase)]
-        [pallet.crate.automated-admin-user
-         :only (automated-admin-user)])
-  (:require [pallet.core :as core]
-            [pallet.compute :as compute]
-            [pallet.crate.hadoop :as h]
-            [pallet.crate.java :as j]))
+  (:use pallet-cascalog.node
+        [pallet.crate.hadoop :only (def-phase-fn)])
+  (:require [pallet-cascalog.environments :as env]
+            [pallet.resource.remote-directory :as rd]
+            [pallet.resource.package :as package]))
 
-;; Okay, here's the good stuff. We're trying to get a system up and
-;; running that can configure a persistent hadoop cluster.
+;; ### Actual Job Run
 ;;
-;; to act as the hadoop user;
-;; sudo su -s /bin/bash hadoop
-;; export JAVA_HOME=$(dirname $(dirname $(update-alternatives --list java)))
-;;
-;; Okay, some notes:
-;;
-;; With jclouds 9b, I'm getting all sorts of errors. In config, we
-;; need to make sure we're using aws-ec2, not just ec2. Also,
-;; cake-pallet adds pallet as a dependency, which forces jclouds
-;; beta-8... doesn't work, if we're trying to play in 9b's world.
-;;
-;; Either I have to go straight back to 8b, with cake-pallet and no
-;; dependencies excluded,
-;;
-;; ## Configuring Proxy
-;; Compile squid from scratch,
-;;
-;; ./configure --enable-removal-policies="heap,lru"
-;; Then give the guys my configuration file, from my macbook.
-;; TODO -- figure out how to get the proper user permissions!
-;;
-;; run squid -z the first time. squid -N runs with no daemon mode
-;;
-;; http://www.deckle.co.za/squid-users-guide/Squid_Configuration_Basics
-;; http://www.deckle.co.za/squid-users-guide/Starting_Squid
-;;
-;; ## Configuring VMFest!
-;; TODO -- link over to Toni's instructions, on how to test this bad
-;; boy.
-;; https://gist.github.com/867526
-;;
-;; ERRORS with virtualbox
-;;
-;; http://forums.virtualbox.org/viewtopic.php?f=6&t=24383
+;; First, a test cluster. I ran this last night, and all worked wonderfully.
+
+(def-phase-fn install-redd-configs
+  "Takes pairs of strings -- the first should be a filename in the
+  `reddconfig` bucket on s3, and the second should be the unpacking
+  directory on the node."
+  [& filename-localpath-pairs]
+  (for [[remote local] (partition 2 filename-localpath-pairs)]
+    (rd/remote-directory local
+                         :url (str "https://reddconfig.s3.amazonaws.com/" remote)
+                         :unpack :tar
+                         :tar-options "xz"
+                         :strip-components 2
+                         :owner h/hadoop-user
+                         :group h/hadoop-user)))
+
+
+(def fw-path "/usr/local/fwtools")
+(def native-path "/home/hadoop/native")
+(def serializers
+  (apply str (interpose "," ["forma.FloatsSerialization"
+                             "forma.IntsSerialization"
+                             "cascading.tuple.hadoop.BytesSerialization"
+                             "cascading.tuple.hadoop.TupleSerialization"
+                             "org.apache.hadoop.io.serializer.WritableSerialization"
+                             "org.apache.hadoop.io.serializer.JavaSerialization"])))
+
+(def-phase-fn config-redd
+  "This phase installs the two files that we need to make redd run
+  with gdal! We do need some better documentation, here."
+  []
+  (package/package "libhdf4-dev")
+  (install-redd-configs
+   "FWTools-linux-x86_64-4.0.0.tar.gz" fw-path
+   "linuxnative.tar.gz" native-path))
+
+(defn forma-cluster [ip-type nodecount]
+  (let [lib-path (str fw-path "/usr/lib")]
+    (cluster-spec ip-type
+                  {:master (hadoop-node [:namenode :jobtracker])
+                   :slaves (slave-node nodecount)}
+                  :base-machine-spec {:os-family :ubuntu
+                                      :os-version-matches "10.10"
+                                      :os-64-bit true
+                                      :hardware-id "cc1.4xlarge"
+                                        ; :image-id "us-east-1/ami-321eed5b"
+                                        ; :spot-price (float 1.60)
+                                      }
+                  :base-props {:hadoop-env {:JAVA_LIBRARY_PATH native-path
+                                            :LD_LIBRARY_PATH lib-path}
+                               ;; :hdfs-site {:dfs.data.dir "/mnt/dfs/data"
+                               ;;             :dfs.name.dir "/mnt/dfs/name"}
+                               :core-site {:io.serializations serializers}
+                               :mapred-site {:mapred.tasks.timeout 300000
+                                             :mapred.reduce.tasks 
+                                             :mapred.tasktracker.map.tasks.maximum 7
+                                             :mapred.tasktracker.reduce.tasks.maximum 7
+                                             :mapred.child.java.opts (str "-Djava.library.path=" native-path " -Xmx512m")
+                                             :mapred.child.env (str "LD_LIBRARY_PATH=" lib-path)}})))
+
+(defn forma-boot [node-count]
+  (let [cluster (forma-cluster :private node-count)]
+    (do (boot-cluster cluster :compute env/ec2-service :environment env/remote-env)
+        (lift-cluster cluster [config-redd
+                               :start-namenode
+                               :start-hdfs
+                               :start-jobtracker
+                               :start-mapred]
+                      :compute env/ec2-service :environment env/remote-env))))
+
+(defn forma-kill []
+  (kill-cluster (forma-cluster :private 0) :compute env/ec2-service :environment env/remote-env))

@@ -1,14 +1,10 @@
-# Pallet & Cascalog
-
-FIXME: write description
-
-## Future Features
+# Pallet & Cascalog: Future Features
 
 (All page numbers refer to locations in [Hadoop, the Definitive Guide, 2nd ed.](http://oreilly.com/catalog/0636920010388).)
 
 ### Network Topology Optimization
 
-[one example...](http://www.matejunkie.com/how-to-kick-off-hadoops-rack-awareness/)
+[rack awareness example...](http://www.matejunkie.com/how-to-kick-off-hadoops-rack-awareness/)
 
 Page 248 discusses how to map out a custom network topology on hadoop using script based mapping. Essentially, we need to write a script that will take a variable number of IP addresses, and return the corresponding network locations. I'm not sure how we can do this effectively, with a pre-written script. Maybe we could use stevedore to generate a script based on all existing nodes in the cluster? Check the "Hadoop Definitive Guide" source code for an example script, here.
 
@@ -89,7 +85,7 @@ and a map of node descriptions, including base nodes for each node
 type, and output a cluster object. We should have a layer of
 abstraction on top of nodes, etc.
 
-NOTES ON HOSTNAME RESOLUTION
+#### NOTES ON HOSTNAME RESOLUTION
 
 It seems like this is an issue a number of folks are having. We
 need to populate etc/hosts to skip DNS resolution, if we're going to
@@ -114,7 +110,7 @@ them through DNS, or etc/hosts.
 From HDFS-default --
 http://hadoop.apache.org/common/docs/r0.20.2/hdfs-default.html
 
-dfs.datanode.dns.nameserver -- The host name or IP address of the
+`dfs.datanode.dns.nameserver` -- The host name or IP address of the
 name server (DNS) which a DataNode should use to determine the host
 name used by the NameNode for communication and display purposes.
 
@@ -131,28 +127,66 @@ And, most clearly:
 
 http://www.cloudera.com/blog/2008/12/securing-a-hadoop-cluster-through-a-gateway/
 
-One “gotcha” of Hadoop is that the HDFS instance has a canonical
-name associated with it, based on the DNS name of the machine — not
-its IP address. If you provide an IP address for the
-fs.default.name, it will reverse-DNS this back to a DNS name, then
-subsequent connections will perform a forward-DNS lookup on the
-canonical DNS name
+One “gotcha” of Hadoop is that the HDFS instance has a canonical name
+associated with it, based on the DNS name of the machine — not its IP
+address. If you provide an IP address for the fs.default.name, it will
+reverse-DNS this back to a DNS name, then subsequent connections will
+perform a forward-DNS lookup on the canonical DNS name
 
 OTHER NOTES
 
-Hadoop cluster tips and tricks --
-http://allthingshadoop.com/2010/04/28/map-reduce-tips-tricks-your-first-real-cluster/
+* [Hadoop cluster tips and tricks](http://allthingshadoop.com/2010/04/28/map-reduce-tips-tricks-your-first-real-cluster/)
+* [Discussion of rack awareness](http://hadoop.apache.org/common/docs/r0.19.2/cluster_setup.html#Configuration+Files)
+* [Hadoop tutorial](http://developer.yahoo.com/hadoop/tutorial/module7.html)
 
-Discussion of rack awareness --
-http://hadoop.apache.org/common/docs/r0.19.2/cluster_setup.html#Configuration+Files
+#### KEY NOTES
 
-Hadoop tutorial --
-http://developer.yahoo.com/hadoop/tutorial/module7.html
-
-KEY NOTES;; From Noll link:
+From Noll link:
 http://www.mail-archive.com/common-user@hadoop.apache.org/msg00170.html
 http://search-hadoop.com/m/PcJ6xnNrSo1/Error+reading+task+output+http/v=threaded
 From a note here:
 http://www.michael-noll.com/tutorials/running-hadoop-on-ubuntu-linux-multi-node-cluster/#confmasters-master-only
 
 So, we can probably do this with etc/hosts.
+
+### More Notes
+
+Okay, here's the good stuff. We're trying to get a system up and
+running that can configure a persistent hadoop cluster.
+
+to act as the hadoop user;
+
+    sudo su - hadoop
+
+With jclouds 9b, I'm getting all sorts of errors. In config, we need
+to make sure we're using aws-ec2, not just ec2. Also, cake-pallet adds
+pallet as a dependency, which forces jclouds beta-8... doesn't work,
+if we're trying to play in 9b's world.
+
+Either I have to go straight back to 8b, with cake-pallet and no
+dependencies excluded,
+
+## Configuring Proxy
+
+Compile squid from scratch;
+
+    ./configure --enable-removal-policies="heap,lru"
+
+Then give the guys my configuration file, from my macbook.
+
+TODO -- figure out how to get the proper user permissions, for the
+squid user!
+
+run `squid -z` the first time. `squid -N` runs with no daemon mode
+
+[Squid Config Basics](http://www.deckle.co.za/squid-users-guide/Squid_Configuration_Basics)
+[Starting Squid Guide](http://www.deckle.co.za/squid-users-guide/Starting_Squid)
+
+## Configuring VMFest!
+
+link over to [Toni's instructions](https://gist.github.com/867526), on
+how to test this bad boy.
+
+#### ERRORS with virtualbox
+
+http://forums.virtualbox.org/viewtopic.php?f=6&t=24383
