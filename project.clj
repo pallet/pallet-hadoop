@@ -2,7 +2,7 @@
   :description "A pallet config for cascalog projects"
   :dependencies [[org.clojure/clojure "1.2.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
-                 [org.cloudhoist/pallet "0.4.13"
+                 [org.cloudhoist/pallet "0.4.17"
                   :exclusions [org.jclouds/jclouds-compute
                                org.jclouds/jclouds-blobstore
                                org.jclouds/jclouds-scriptbuilder

@@ -1,6 +1,6 @@
 (ns pallet-cascalog.node
   (:use [pallet.crate.automated-admin-user :only (automated-admin-user)]
-        [pallet.crate.hadoop :only (phase def-phase-fn)]
+        [pallet.extensions :only (phase def-phase-fn)]
         [pallet.crate.java :only (java)]
         [pallet.core :only (make-node lift converge)]
         [clojure.set :only (union)])
