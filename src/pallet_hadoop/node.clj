@@ -1,4 +1,4 @@
-(ns pallet-cascalog.node
+(ns pallet-hadoop.node
   (:use [pallet.crate.automated-admin-user :only (automated-admin-user)]
         [pallet.extensions :only (phase def-phase-fn)]
         [pallet.crate.java :only (java)]

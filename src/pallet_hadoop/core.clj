@@ -1,7 +1,8 @@
-(ns pallet-cascalog.core
-  (:use pallet-cascalog.node
-        [pallet.crate.hadoop :only (def-phase-fn phase hadoop-user)])
-  (:require [pallet-cascalog.environments :as env]
+(ns pallet-hadoop.core
+  (:use pallet-hadoop.node
+        [pallet.extensions :only (def-phase-fn phase)]
+        [pallet.crate.hadoop :only ( hadoop-user)])
+  (:require [pallet-hadoop.environments :as env]
             [pallet.resource.remote-directory :as rd]
             [pallet.resource.package :as package]))
 

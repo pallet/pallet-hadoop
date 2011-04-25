@@ -1,5 +1,5 @@
-(defproject pallet-cascalog "0.0.1-SNAPSHOT"
-  :description "A pallet config for cascalog projects"
+(defproject pallet-hadoop "0.0.1-SNAPSHOT"
+  :description "A pallet config for hadoop projects"
   :dependencies [[org.clojure/clojure "1.2.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.cloudhoist/pallet "0.4.17"
@@ -17,7 +17,6 @@
                                org.jclouds/jclouds-log4j
                                org.jclouds/jclouds-enterprise]]
                  [org.cloudhoist/pallet-crates-standalone "0.4.0"]
-                 [cascalog "1.7.0-SNAPSHOT"]
                  [org.jclouds/jclouds-all "1.0-beta-9b"]
                  [org.jclouds.driver/jclouds-jsch "1.0-beta-9b"]
                  [org.jclouds.driver/jclouds-log4j "1.0-beta-9b"]

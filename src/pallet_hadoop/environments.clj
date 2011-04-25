@@ -1,4 +1,4 @@
-(ns pallet-cascalog.environments
+(ns pallet-hadoop.environments
   (:use [pallet.resource :only (phase)]
         [pallet.resource.package :only (package-manager)]
         [pallet.compute.vmfest :only (parallel-create-nodes)])
