@@ -27,7 +27,7 @@
                  [org.cloudhoist/hadoop "0.4.0-SNAPSHOT"]
                  [org.cloudhoist/automated-admin-user "0.4.0"]
                  [org.cloudhoist/java "0.4.0"]]
-  :dev-dependencies [[swank-clojure/swank-clojure "1.2.1"]
+  :dev-dependencies [[swank-clojure/swank-clojure "1.3.0"]
                      [vmfest/vmfest "0.2.2"]]
   :repositories {"sonatype"
                  "https://oss.sonatype.org/content/repositories/releases/"})
