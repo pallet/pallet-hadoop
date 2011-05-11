@@ -1,5 +1,8 @@
 (defproject pallet-hadoop "0.0.1-SNAPSHOT"
-  :description "A pallet config for hadoop projects"
+  :description "Pallet meets Hadoop."
+  :resources-path "resource"
+  :repositories {"sonatype"
+                 "https://oss.sonatype.org/content/repositories/releases/"}  
   :dependencies [[org.clojure/clojure "1.2.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.cloudhoist/pallet "0.4.17"
@@ -27,6 +30,4 @@
                  [org.cloudhoist/automated-admin-user "0.4.0"]
                  [org.cloudhoist/java "0.4.0"]]
   :dev-dependencies [[swank-clojure/swank-clojure "1.2.1"]
-                     [vmfest/vmfest "0.2.2"]]
-  :repositories {"sonatype"
-                 "https://oss.sonatype.org/content/repositories/releases/"})
+                     [vmfest/vmfest "0.2.2"]])
