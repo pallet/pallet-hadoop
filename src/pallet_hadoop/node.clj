@@ -250,7 +250,6 @@
   (merge options {:ip-type ip-type
                   :nodedefs nodedefs}))
 
-
 (defn test-cluster
   "This generates an example cluster map."
   [ip-type nodecount]
