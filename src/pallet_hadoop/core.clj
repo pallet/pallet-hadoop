@@ -53,8 +53,6 @@
    "linuxnative.tar.gz" native-path))
 
 ;; Other options...
-;;
-
 
 (defn forma-cluster [nodecount]
   (let [lib-path (str fw-path "/usr/lib")]
@@ -75,11 +73,11 @@
                                :hdfs-site {:dfs.data.dir "/mnt/dfs/data"
                                            :dfs.name.dir "/mnt/dfs/name"}
                                :core-site {:io.serializations serializers}
-                               :mapred-site {:mapred.tasks.timeout 300000
+                               :mapred-site {:mapred.task.timeout 300000
                                              :mapred.reduce.tasks (int (* 1.2 15 nodecount)) ; 1.2 times the number of tasks times number of nodes
                                              :mapred.tasktracker.map.tasks.maximum 15
                                              :mapred.tasktracker.reduce.tasks.maximum 15
-                                             :mapred.child.java.opts (str "-Djava.library.path=" native-path " -Xms1024M -Xmx1024M")
+                                             :mapred.child.java.opts (str "-Djava.library.path=" native-path " -Xms1024m -Xmx1024m")
                                              :mapred.child.env (str "LD_LIBRARY_PATH=" lib-path)}})))
 
 (defn forma-boot [node-count]

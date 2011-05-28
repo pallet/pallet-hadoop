@@ -1,6 +1,11 @@
+.#
 pom.xml
+.cake
 *jar
 lib
-log
 classes
-.cake
+docs
+autodoc
+.#*
+*#*
+logs/
