@@ -22,7 +22,6 @@
 (defn merge-to-vec
   "Returns a vector containing the union of all supplied collections."
   [& xs]
-  (println xs)
   (apply (comp vec union) (map set xs)))
 
 ;; TODO -- discuss aliasing.
@@ -215,50 +214,39 @@
 ;; TODO -- more description
 (defn converge-cluster
   [cluster action & options]
-  (apply (partial converge (cluster->node-map cluster action)) options))
+  (-> (partial converge (cluster->node-map cluster action))
+      (apply options)))
 
 (defn boot-cluster [cluster & options]
-  (apply (partial converge-cluster cluster :boot
+  (-> (partial converge-cluster cluster :boot
                   :phase [:configure
                           :publish-ssh-key
                           :authorize-jobtracker])
-         options))
+      (apply options)))
 
 (defn kill-cluster [cluster & options]
-  (apply (partial converge-cluster cluster :kill) options))
+  (-> (partial converge-cluster cluster :kill)
+      (apply options)))
 
 (defn lift-cluster
   [cluster phaseseq & options]
-  (apply (partial lift (cluster->node-set cluster)
-                  :phase phaseseq)
-         options))
+  (-> (partial lift (cluster->node-set cluster)
+               :phase phaseseq)
+      (apply options)))
 
 (defn start-cluster [cluster & options]
-  (apply (partial lift-cluster cluster [:start-namenode
-                                        :start-hdfs
-                                        :start-jobtracker
-                                        :start-mapred])
-         options))
+  (-> (partial lift-cluster cluster [:start-namenode
+                                     :start-hdfs
+                                     :start-jobtracker
+                                     :start-mapred])
+      (apply options)))
 
 ;; EXPLAIN
 ;; TODO -- add overall cluster default hadoop properties.
 
-(defn cluster-spec [ip-type nodedefs & {:keys [base-machine-spec base-props]
-                                        :or [base-machine-spec {}
-                                             base-props {}]
-                                        :as options}]
-  (merge options {:ip-type ip-type
-                  :nodedefs nodedefs}))
-
-(defn test-cluster
-  "This generates an example cluster map."
-  [ip-type nodecount]
-  (cluster-spec ip-type
-                {:master (hadoop-node [:namenode :jobtracker])
-                 :slaves (slave-node nodecount)}
-                :base-machine-spec {:os-family :ubuntu
-                                    :os-version-matches "10.10"
-                                    :os-64-bit true}
-                :base-props {:mapred-site {:mapred.tasks.timeout 300000
-                                           :mapred.tasktracker.map.tasks.maximum 20
-                                           :mapred.tasktracker.reduce.tasks.maximum 20}}))
+(defn cluster-spec [ip-type nodedefs & {:as options}]
+  (merge {:base-machine-spec {}
+          :base-props {}}
+         options
+         {:ip-type ip-type
+          :nodedefs nodedefs}))
