@@ -1,6 +1,5 @@
 (defproject pallet-hadoop "0.0.2-SNAPSHOT"
   :description "Pallet meets Hadoop."
-  :resources-path "resource"
   :dev-resources-path "dev"
   :repositories {"sonatype"
                  "https://oss.sonatype.org/content/repositories/releases/"}  
@@ -20,7 +19,7 @@
                                org.jclouds/jclouds-jsch
                                org.jclouds/jclouds-log4j
                                org.jclouds/jclouds-enterprise]]
-                 [org.jclouds/jclouds-all "1.0-beta-9b"]                 
+                 [org.jclouds/jclouds-all "1.0-beta-9c"]                 
                  [com.jcraft/jsch "0.1.42"]
                  [org.cloudhoist/hadoop "0.4.0-SNAPSHOT"]
                  [org.cloudhoist/automated-admin-user "0.4.0"]
