@@ -21,7 +21,7 @@
                                org.jclouds/jclouds-jsch
                                org.jclouds/jclouds-log4j
                                org.jclouds/jclouds-enterprise]]
-                 [org.jclouds/jclouds-all "1.0-beta-9c"]                 
+                 [org.jclouds/jclouds-all "1.0-beta-9c"]
                  [com.jcraft/jsch "0.1.42"]
                  [org.cloudhoist/hadoop "0.4.0-SNAPSHOT"]
                  [org.cloudhoist/automated-admin-user "0.4.0"]

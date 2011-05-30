@@ -71,12 +71,10 @@
 
 (defn hadoop-phases
   "Returns a map of all possible hadoop phases. IP-type specifies "
-  [ip-type jt-tag nn-tag properties]
-  (let [configure (phase
-                   (h/configure ip-type
-                                nn-tag
-                                jt-tag
-                                properties))]
+  [{:keys [nodedefs ip-type]} properties]
+  (let [[jt-tag nn-tag] (roles->tags [:jobtracker :namenode] nodedefs)
+        configure (phase
+                   (h/configure ip-type nn-tag jt-tag properties))]
     {:bootstrap automated-admin-user
      :configure (phase (java :jdk)
                        (h/install :cloudera)
@@ -114,10 +112,10 @@
   "Generates a node spec for a hadoop node, merging together the given
   basenode with the required properties for the defined hadoop
   roles. (We assume at this point that all aliases have been expanded.)"
-  [base-spec roles]
-  (let [ports ((comp vec distinct) (mapcat hadoop-ports roles))]
+  [{:keys [spec roles]}]
+  (let [ports (->> roles (mapcat hadoop-ports) distinct vec)]
     (merge-with merge-to-vec
-                base-spec
+                spec
                 {:inbound-ports ports})))
 
 (defn roles->phases
@@ -129,10 +127,9 @@
 (defn hadoop-server-spec
   "Returns a map of all all hadoop phases -- we'll need to modify the
   name, here, and change this to compose with over server-specs."
-  [ip-type jt-tag nn-tag properties roles]
-  (let [all-phases (hadoop-phases ip-type jt-tag nn-tag properties)]
-    (select-keys all-phases
-                 (roles->phases roles))))
+  [cluster {:keys [props roles]}]
+  (select-keys (hadoop-phases cluster props)
+               (roles->phases roles)))
 
 ;; We have a precondition here that makes sure at least one of the
 ;;defined roles exists as a hadoop roles.
@@ -146,25 +143,21 @@
 
 (defn hadoop-spec
   "Equivalent to `server-spec` in the new pallet."
-  [tag ip-type jt-tag nn-tag base-spec base-props {:keys [spec roles props]
-                                                   :or {spec {}
-                                                        props {}}}]
-  {:pre [(some (set (keys role->phase-map)) (expand-aliases roles))]}
-  (let [roles (expand-aliases roles)
-        machine-spec (hadoop-machine-spec (merge base-spec spec) roles)
-        props (h/merge-config base-props props)
-        phase-map (hadoop-server-spec ip-type jt-tag nn-tag props roles)
+  [cluster tag node]
+  (let [machine-spec (hadoop-machine-spec node)
+        phase-map (hadoop-server-spec cluster node)
         phase-seq (apply concat phase-map)]
     (apply make-node tag machine-spec phase-seq)))
 
 (defn hadoop-node
   "Generates a map representation of a Hadoop node, employing sane defaults."
-  [roles & [count & {:keys [base-spec props]
-                     :or {base-spec {} props {}}
-                     :as options}]]
+  [roles & [count & {:as options}]]
   {:pre [(or count (master? roles))]}
-  {:node (merge {:roles roles} options)
-   :count (or count (when (master? roles) 1))})
+  {:node (merge {:roles roles
+                 :spec {}
+                 :props {}}
+                options)
+   :count (or count 1)})
 
 (def slave-node (partial hadoop-node [:slavenode]))
 
@@ -184,19 +177,27 @@
                          node-defs))]
     (remove nil? (map find-tag role-seq))))
 
+(defn merge-node
+  [cluster node]
+  {:pre [(some (set (keys role->phase-map)) (expand-aliases (:roles node)))]}
+  (let [{:keys [base-machine-spec base-props]} cluster
+        {:keys [spec roles props]} node]
+    {:spec (merge base-machine-spec spec)
+     :roles (expand-aliases roles)
+     :props (h/merge-config base-props props)}))
+
 (defn cluster->node-map
   "Converts a cluster to `node-map` represention, for use in a call to
   `pallet.core/converge`. Supported tasks at this time are `:boot` and `:kill`.
 
     :boot => uses the counts defined in the cluster
     :kill => sets map values to zero, effectively killing the cluster on converge."
-  [cluster task]
-  (let [[node-defs base-spec base-props ip-type] (map cluster [:nodedefs :base-machine-spec :base-props :ip-type])
-        [jt-tag nn-tag] (roles->tags [:jobtracker :namenode] node-defs)]
+  [{:keys [nodedefs] :as cluster} task]
+  (let [mk-spec (partial hadoop-spec cluster)
+        into-cluster (partial merge-node cluster)]
     (into {}
-          (for [[tag config] node-defs
-                :let [[count node] (map config [:count :node])
-                      node-def (hadoop-spec tag ip-type jt-tag nn-tag base-spec base-props node)]]
+          (for [[tag node] nodedefs
+                :let [node-def (->> node into-cluster (mk-spec tag))]]
             (case task
                   :boot [node-def count]
                   :kill [node-def 0])))))

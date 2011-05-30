@@ -3,6 +3,7 @@ pom.xml
 .cake
 *jar
 lib
+log/
 classes
 docs
 autodoc
