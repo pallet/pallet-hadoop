@@ -5,7 +5,7 @@
 (def test-cluster
   (cluster-spec :private
                 {:jobtracker (hadoop-node [:jobtracker :namenode])
-                 :slaves (slave-node 3)}
+                 :slaves (slave-node 1)}
                 :base-machine-spec {:os-family :ubuntu
                                     :os-version-matches "10.10"
                                     :os-64-bit true}
