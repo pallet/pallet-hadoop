@@ -12,7 +12,7 @@
                  [org.cloudhoist/automated-admin-user "0.5.0"]
                  [org.cloudhoist/java "0.5.0"]
                  [org.jclouds/jclouds-all "1.0-beta-9c"]
-                 [org.jclouds/jclouds-jsch "1.0-beta-9c"]
-                 [org.jclouds/jclouds-log4j "1.0-beta-9c"]
+                 [org.jclouds.driver/jclouds-jsch "1.0-beta-9c"]
+                 [org.jclouds.driver/jclouds-log4j "1.0-beta-9c"]
                  [log4j/log4j "1.2.14"]]
   :dev-dependencies [[swank-clojure/swank-clojure "1.2.1"]])
