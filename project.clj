@@ -10,6 +10,5 @@
                  [org.cloudhoist/pallet "0.5.0"]
                  [org.cloudhoist/hadoop "0.5.0-SNAPSHOT"]
                  [org.cloudhoist/automated-admin-user "0.5.0"]
-                 [org.cloudhoist/java "0.5.0"]
-                 [org.jclouds/jclouds-aws "1.0-SNAPSHOT"]]
+                 [org.cloudhoist/java "0.5.0"]]
   :dev-dependencies [[swank-clojure/swank-clojure "1.2.1"]])
