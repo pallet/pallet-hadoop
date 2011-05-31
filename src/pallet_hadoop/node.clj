@@ -32,8 +32,8 @@
 ;; ### Defaults
 
 (def
-  ^{:doc "Map between hadoop aliases and the roles they stand
-  for. `:slavenode` acts as an alias for nodes that function as both
+  ^{:doc "Map between hadoop aliases and the roles for which they
+  stand.`:slavenode` acts as an alias for nodes that function as both
   datanodes and tasktrackers."}
   hadoop-aliases
   {:slavenode [:datanode :tasktracker]})
