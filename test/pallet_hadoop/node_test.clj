@@ -4,7 +4,7 @@
 
 (def test-cluster
   (cluster-spec :private
-                {:jobtracker (hadoop-node [:jobtracker :namenode])
+                {:master (hadoop-node [:jobtracker :namenode])
                  :slaves (slave-node 1)}
                 :base-machine-spec {:os-family :ubuntu
                                     :os-version-matches "10.10"
@@ -23,6 +23,22 @@
        [[1 2] [4 5]] [1 2 4 5]
        [["face" 2] [2 1]] [1 2 "face"]))
 
+(deftest set-vals-test
+  (is (= {:key1 0 :key2 0} (set-vals {:key1 "face" :key2 8} 0))))
+
+(deftest expand-aliases-test
+  (is (= [:datanode :tasktracker] (expand-aliases [:slavenode :datanode])))
+  (is (= [:datanode :tasktracker :namenode] (expand-aliases [:slavenode :namenode])))
+  (is (= [:datanode :namenode] (expand-aliases [:datanode :namenode]))))
+
+(deftest master?-test
+  (is (= false (master? [:cake])))
+  (is (= true (master? [:jobtracker]))))
+
+(deftest roles->tags-test
+  (is (= [:master :master] (roles->tags [:jobtracker :namenode]
+                                        (:nodedefs test-cluster)))))
+
 (deftest slave-node-test
   (is (thrown? AssertionError (slave-node)))
   (are [opts result] (= result (apply slave-node opts))
@@ -34,3 +50,5 @@
                :spec {}
                :props {:mapred-site {:prop "val"}}}
         :count 1}))
+
+

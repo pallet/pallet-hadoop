@@ -265,3 +265,28 @@
          (-> (cluster->node-map cluster)
              (set-vals 0))
          options))
+
+(comment
+  "This'll get you started; for a more detailed introduction, please
+   head over to https://github.com/pallet/pallet-hadoop-example."
+
+  (use pallet-hadoop.node)
+  (use 'pallet.compute)
+
+  (def ec2-service (compute-service "aws-ec2"
+                                    :identity "ec2-access-key-id"
+                                    :credential "ec2-secret-access-key"))
+  (def some-cluster
+    (cluster-spec :private
+                  {:jobtracker (hadoop-node [:jobtracker :namenode])
+                   :slaves (slave-node 1)}
+                  :base-machine-spec {:os-family :ubuntu
+                                      :os-version-matches "10.10"
+                                      :os-64-bit true}
+                  :base-props {:mapred-site {:mapred.task.timeout 300000
+                                             :mapred.reduce.tasks 50
+                                             :mapred.tasktracker.map.tasks.maximum 15
+                                             :mapred.tasktracker.reduce.tasks.maximum 15}}))
+  
+  (boot-cluster  some-cluster :compute ec2-service)
+  (start-cluster some-cluster :compute ec2-service))
