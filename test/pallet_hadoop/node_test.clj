@@ -27,10 +27,10 @@
   (is (thrown? AssertionError (slave-node)))
   (are [opts result] (= result (apply slave-node opts))
        [3]
-       {:node {:roles [:slavenode]} :count 3}
+       {:node {:roles [:slavenode] :spec {} :props {}} :count 3}
 
        [1 :props {:mapred-site {:prop "val"}}]
        {:node {:roles [:slavenode]
-               :base-spec {}
+               :spec {}
                :props {:mapred-site {:prop "val"}}}
-        :count 3}))
+        :count 1}))
