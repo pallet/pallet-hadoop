@@ -3,3 +3,5 @@ pom.xml
 lib
 log
 classes
+logs/
+.cake
