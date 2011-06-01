@@ -1,3 +1,9 @@
+# Pallet-Hadoop #
+
+Hadoop Cluster Management with Intelligent Defaults.
+
+Version `0.1.0` uses Pallet 0.4.17.
+
 # Pallet & Cascalog: Future Features
 
 (All page numbers refer to locations in [Hadoop, the Definitive Guide, 2nd ed.](http://oreilly.com/catalog/0636920010388).)
