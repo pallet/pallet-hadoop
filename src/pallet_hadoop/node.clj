@@ -85,7 +85,7 @@
    :tasktracker #{:start-mapred}})
 
 (defn roles->tags
-  "Accepts sequence of hadoop roles and a map of `tag, hadoop-node`
+  "Accepts sequence of hadoop roles and a map of `tag, node-group`
   pairs and returns a sequence of the corresponding node tags. Every
   role must exist in the supplied node-def map to make it past the
   postcondition."
@@ -175,9 +175,11 @@
                :spec {}
                :props {}}
        :count 10}"
-  [role-seq & [count & {:keys [roles spec props]}]]
-  {:pre [(or count (master? role-seq))]}
-  {:node {:roles (merge-to-vec role-seq (or roles []))
+  [role-seq & [count & {:keys [spec props]}]]
+  {:pre [(if (master? role-seq)
+           (or (nil? count) (= count 1))
+           count)]}
+  {:node {:roles role-seq
           :spec (or spec {})
           :props (or props {})}
    :count (or count 1)})
