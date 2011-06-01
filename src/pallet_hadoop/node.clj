@@ -158,7 +158,7 @@
 (defn hadoop-spec
   "Generates a pallet representation of a hadoop node, built from the
   supplied cluster and the supplied hadoop node map -- see
-  `hadoop-node` for construction details. (`hadoop-spec` is similar to
+  `node-group` for construction details. (`hadoop-spec` is similar to
   `pallet.core/defnode`, sans binding.)"
   [cluster tag node]
   (let [node (merge-node cluster node)]
@@ -167,10 +167,10 @@
            (hadoop-machine-spec node)
            (apply concat (hadoop-server-spec cluster node)))))
 
-(defn hadoop-node
+(defn node-group
   "Generates a map representation of a Hadoop node. For example:
 
-   (hadoop-node [:slavenode] 10)
+   (node-group [:slavenode] 10)
     => {:node {:roles [:tasktracker :datanode]
                :spec {}
                :props {}}
@@ -182,7 +182,7 @@
           :props (or props {})}
    :count (or count 1)})
 
-(def slave-node (partial hadoop-node [:slavenode]))
+(def slave-group (partial node-group [:slavenode]))
 
 (defn cluster-spec
   "Generates a data representation of a hadoop cluster.
@@ -278,8 +278,8 @@
                                     :credential "ec2-secret-access-key"))
   (def some-cluster
     (cluster-spec :private
-                  {:jobtracker (hadoop-node [:jobtracker :namenode])
-                   :slaves (slave-node 1)}
+                  {:jobtracker (node-group [:jobtracker :namenode])
+                   :slaves (slave-group 1)}
                   :base-machine-spec {:os-family :ubuntu
                                       :os-version-matches "10.10"
                                       :os-64-bit true}

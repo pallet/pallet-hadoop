@@ -4,8 +4,8 @@
 
 (def test-cluster
   (cluster-spec :private
-                {:master (hadoop-node [:jobtracker :namenode])
-                 :slaves (slave-node 1)}
+                {:master (node-group [:jobtracker :namenode])
+                 :slaves (slave-group 1)}
                 :base-machine-spec {:os-family :ubuntu
                                     :os-version-matches "10.10"
                                     :os-64-bit true}
@@ -39,9 +39,9 @@
   (is (= [:master :master] (roles->tags [:jobtracker :namenode]
                                         (:nodedefs test-cluster)))))
 
-(deftest slave-node-test
-  (is (thrown? AssertionError (slave-node)))
-  (are [opts result] (= result (apply slave-node opts))
+(deftest slave-group-test
+  (is (thrown? AssertionError (slave-group)))
+  (are [opts result] (= result (apply slave-group opts))
        [3]
        {:node {:roles [:slavenode] :spec {} :props {}} :count 3}
 

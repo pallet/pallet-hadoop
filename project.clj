@@ -1,10 +1,8 @@
-(defproject pallet-hadoop "0.1.0-SNAPSHOT"
+(defproject pallet-hadoop "0.1.0"
   :description "Pallet meets Hadoop."
   :dev-resources-path "dev"
-  :repositories {"sonatype-release"
-                 "https://oss.sonatype.org/content/repositories/releases/"
-                 "sonatype-snap"
-                 "https://oss.sonatype.org/content/repositories/snapshots/"}  
+  :repositories {"sonatype"
+                 "https://oss.sonatype.org/content/repositories/releases/"}  
   :dependencies [[org.clojure/clojure "1.2.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.cloudhoist/pallet "0.4.17"
@@ -21,10 +19,10 @@
                                org.jclouds/jclouds-jsch
                                org.jclouds/jclouds-log4j
                                org.jclouds/jclouds-enterprise]]
-                 [org.jclouds/jclouds-all "1.0-beta-9c"]
-                 [com.jcraft/jsch "0.1.42"]
-                 [org.cloudhoist/hadoop "0.4.0-SNAPSHOT"]
+                 [org.cloudhoist/hadoop "0.4.0"]
                  [org.cloudhoist/automated-admin-user "0.4.0"]
                  [org.cloudhoist/java "0.4.0"]
+                 [org.jclouds/jclouds-all "1.0-beta-9c"]
+                 [com.jcraft/jsch "0.1.42"]
                  [log4j/log4j "1.2.14"]]
   :dev-dependencies [[swank-clojure/swank-clojure "1.2.1"]])
