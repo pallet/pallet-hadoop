@@ -275,20 +275,30 @@
   (use pallet-hadoop.node)
   (use 'pallet.compute)
 
-  (def ec2-service (compute-service "aws-ec2"
-                                    :identity "ec2-access-key-id"
-                                    :credential "ec2-secret-access-key"))
-  (def some-cluster
+  ;; We can define our compute service here...
+  (def ec2-service
+    (compute-service "aws-ec2"
+                     :identity "ec2-access-key-id"
+                     :credential "ec2-secret-access-key"))
+
+  ;; Or, we can get this from a config file, in
+  ;; `~/.pallet/config.clj`.
+  (def ec2-service
+    (compute-service-from-config-file :aws))
+
+  (def example-cluster
     (cluster-spec :private
                   {:jobtracker (node-group [:jobtracker :namenode])
-                   :slaves (slave-group 1)}
+                   :slaves     (slave-group 2)}
                   :base-machine-spec {:os-family :ubuntu
                                       :os-version-matches "10.10"
-                                      :os-64-bit true}
+                                      :os-64-bit true
+                                      :min-ram (* 4 1024)}
                   :base-props {:mapred-site {:mapred.task.timeout 300000
-                                             :mapred.reduce.tasks 50
-                                             :mapred.tasktracker.map.tasks.maximum 15
-                                             :mapred.tasktracker.reduce.tasks.maximum 15}}))
+                                             :mapred.reduce.tasks 3
+                                             :mapred.tasktracker.map.tasks.maximum 3
+                                             :mapred.tasktracker.reduce.tasks.maximum 3
+                                             :mapred.child.java.opts "-Xms1024m"}}))
   
   (boot-cluster  some-cluster :compute ec2-service)
   (start-cluster some-cluster :compute ec2-service))
