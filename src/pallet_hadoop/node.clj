@@ -280,7 +280,7 @@
     (compute-service "aws-ec2"
                      :identity "ec2-access-key-id"
                      :credential "ec2-secret-access-key"))
-
+  
   ;; Or, we can get this from a config file, in
   ;; `~/.pallet/config.clj`.
   (def ec2-service
@@ -289,16 +289,15 @@
   (def example-cluster
     (cluster-spec :private
                   {:jobtracker (node-group [:jobtracker :namenode])
-                   :slaves     (slave-group 2)}
+                   :slaves     (slave-group 1)}
                   :base-machine-spec {:os-family :ubuntu
                                       :os-version-matches "10.10"
-                                      :os-64-bit true
-                                      :min-ram (* 4 1024)}
+                                      :os-64-bit true}
                   :base-props {:mapred-site {:mapred.task.timeout 300000
                                              :mapred.reduce.tasks 3
                                              :mapred.tasktracker.map.tasks.maximum 3
                                              :mapred.tasktracker.reduce.tasks.maximum 3
                                              :mapred.child.java.opts "-Xms1024m"}}))
   
-  (boot-cluster  some-cluster :compute ec2-service)
-  (start-cluster some-cluster :compute ec2-service))
+  (boot-cluster  example-cluster :compute ec2-service)
+  (start-cluster example-cluster :compute ec2-service))
