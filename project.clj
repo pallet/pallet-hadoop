@@ -1,4 +1,4 @@
-(defproject pallet-hadoop "0.2.0-SNAPSHOT"
+(defproject pallet-hadoop "0.3.0-SNAPSHOT"
   :description "Pallet meets Hadoop."
   :dev-resources-path "dev"
   :repositories {"sonatype"
