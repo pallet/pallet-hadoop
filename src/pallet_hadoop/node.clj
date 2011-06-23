@@ -292,7 +292,8 @@
                    :slaves     (slave-group 1)}
                   :base-machine-spec {:os-family :ubuntu
                                       :os-version-matches "10.10"
-                                      :os-64-bit true}
+                                      :os-64-bit true
+                                      }
                   :base-props {:mapred-site {:mapred.task.timeout 300000
                                              :mapred.reduce.tasks 3
                                              :mapred.tasktracker.map.tasks.maximum 3
