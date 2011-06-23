@@ -85,7 +85,7 @@
    :tasktracker #{:start-mapred}})
 
 (defn roles->tags
-  "Accepts sequence of hadoop roles and a map of `tag, hadoop-node`
+  "Accepts sequence of hadoop roles and a map of `tag, node-group`
   pairs and returns a sequence of the corresponding node tags. Every
   role must exist in the supplied node-def map to make it past the
   postcondition."
@@ -175,9 +175,11 @@
                :spec {}
                :props {}}
        :count 10}"
-  [role-seq & [count & {:keys [roles spec props]}]]
-  {:pre [(or count (master? role-seq))]}
-  {:node {:roles (merge-to-vec role-seq (or roles []))
+  [role-seq & [count & {:keys [spec props]}]]
+  {:pre [(if (master? role-seq)
+           (or (nil? count) (= count 1))
+           count)]}
+  {:node {:roles role-seq
           :spec (or spec {})
           :props (or props {})}
    :count (or count 1)})
@@ -273,20 +275,29 @@
   (use pallet-hadoop.node)
   (use 'pallet.compute)
 
-  (def ec2-service (compute-service "aws-ec2"
-                                    :identity "ec2-access-key-id"
-                                    :credential "ec2-secret-access-key"))
-  (def some-cluster
+  ;; We can define our compute service here...
+  (def ec2-service
+    (compute-service "aws-ec2"
+                     :identity "ec2-access-key-id"
+                     :credential "ec2-secret-access-key"))
+  
+  ;; Or, we can get this from a config file, in
+  ;; `~/.pallet/config.clj`.
+  (def ec2-service
+    (compute-service-from-config-file :aws))
+
+  (def example-cluster
     (cluster-spec :private
                   {:jobtracker (node-group [:jobtracker :namenode])
-                   :slaves (slave-group 1)}
+                   :slaves     (slave-group 1)}
                   :base-machine-spec {:os-family :ubuntu
                                       :os-version-matches "10.10"
                                       :os-64-bit true}
                   :base-props {:mapred-site {:mapred.task.timeout 300000
-                                             :mapred.reduce.tasks 50
-                                             :mapred.tasktracker.map.tasks.maximum 15
-                                             :mapred.tasktracker.reduce.tasks.maximum 15}}))
+                                             :mapred.reduce.tasks 3
+                                             :mapred.tasktracker.map.tasks.maximum 3
+                                             :mapred.tasktracker.reduce.tasks.maximum 3
+                                             :mapred.child.java.opts "-Xms1024m"}}))
   
-  (boot-cluster  some-cluster :compute ec2-service)
-  (start-cluster some-cluster :compute ec2-service))
+  (boot-cluster  example-cluster :compute ec2-service)
+  (start-cluster example-cluster :compute ec2-service))
