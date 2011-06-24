@@ -16,10 +16,10 @@ After surveying existing tools, I decided to write my own layer over [Pallet](ht
 
 To include pallet-hadoop in your project, add the following lines to `:dev-dependencies` in your `project.clj` file:
 
-    [pallet-hadoop "0.1.0"]
-    [org.jclouds/jclouds-all "1.0-beta-9c"]
-    [org.jclouds.driver/jclouds-jsch "1.0-beta-9c"]
-    [org.jclouds.driver/jclouds-log4j "1.0-beta-9c"]
+    [pallet-hadoop "0.3.0"]
+    [org.jclouds/jclouds-all "1.0.0"]
+    [org.jclouds.driver/jclouds-jsch "1.0.0"]
+    [org.jclouds.driver/jclouds-log4j "1.0.0"]
     [log4j/log4j "1.2.14"]
 
 You'll also need to add the Sonatype repository, to get access to Pallet. Add this k-v pair to your `project.clj` file:
