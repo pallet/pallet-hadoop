@@ -6,6 +6,7 @@
         [pallet.compute :only (primary-ip nodes-by-tag nodes)]
         [clojure.set :only (union)])
   (:require [pallet.core :as core]
+            [pallet.action.package :as package]
             [pallet.crate.hadoop :as h]))
 
 ;; ## Hadoop Cluster Configuration
@@ -110,10 +111,11 @@
   "Returns a map of all possible hadoop phases. IP-type specifies..."
   [{:keys [nodedefs ip-type]} properties]
   (let [[jt-tag nn-tag] (roles->tags [:jobtracker :namenode] nodedefs)
-        configure (phase
-                   (h/configure ip-type nn-tag jt-tag properties))]
+        configure (phase (h/configure ip-type nn-tag jt-tag properties))]
     {:bootstrap automated-admin-user
-     :configure (phase (java :jdk)
+     :configure (phase (package/package-manager :update)
+                       (package/package-manager :upgrade)
+                       (java :jdk)
                        (h/install :cloudera)
                        configure)
      :reinstall (phase (h/install :cloudera)
@@ -301,7 +303,7 @@
   ;; Or, we can get this from a config file, in
   ;; `~/.pallet/config.clj`.
   (def ec2-service
-    (compute-service-from-config-file :aws))
+    (service :aws))
 
   (def example-cluster
     (cluster-spec :private
