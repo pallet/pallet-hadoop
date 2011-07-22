@@ -3,6 +3,7 @@
         [pallet.extensions :only (phase def-phase-fn)]
         [pallet.crate.java :only (java)]
         [pallet.core :only (make-node lift converge)]
+        [pallet.compute :only (primary-ip nodes-by-tag nodes)]
         [clojure.set :only (union)])
   (:require [pallet.core :as core]
             [pallet.crate.hadoop :as h]))
@@ -267,6 +268,22 @@
          (-> (cluster->node-map cluster)
              (set-vals 0))
          options))
+
+;;; helper functions
+
+(defn jobtracker-ip
+  "Returns a string containing the IP address of the jobtracker node
+  instantiated in the service."
+  [service]
+  (when-let [jobtracker (first (:jobtracker (nodes-by-tag (nodes service))))]
+    (primary-ip jobtracker)))
+
+(defn namenode-ip
+  "Returns a string containing the IP address of tje namenode node
+  instantiated in the service, if there is one"
+  [service]
+  (when-let [namenode  (first (:namenode (nodes-by-tag (nodes service))))]
+    (primary-ip namenode)))
 
 (comment
   "This'll get you started; for a more detailed introduction, please
