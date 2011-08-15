@@ -271,21 +271,26 @@
              (set-vals 0))
          options))
 
-;;; helper functions
+;; helper functions
+
+(defn master-ip
+  "Returns a string containing the IP address of the master node
+  instantiated in the service."
+  [tag-kwd service]
+  (when-let [[master-node] (tag-kwd (nodes-by-tag (nodes service)))]
+    (primary-ip master-node)))
 
 (defn jobtracker-ip
   "Returns a string containing the IP address of the jobtracker node
   instantiated in the service."
   [service]
-  (when-let [jobtracker (first (:jobtracker (nodes-by-tag (nodes service))))]
-    (primary-ip jobtracker)))
+  (master-ip service :jobtracker))
 
 (defn namenode-ip
-  "Returns a string containing the IP address of tje namenode node
+  "Returns a string containing the IP address of the namenode node
   instantiated in the service, if there is one"
   [service]
-  (when-let [namenode  (first (:namenode (nodes-by-tag (nodes service))))]
-    (primary-ip namenode)))
+  (master-ip service :namenode))
 
 (comment
   "This'll get you started; for a more detailed introduction, please
