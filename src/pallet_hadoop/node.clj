@@ -291,7 +291,7 @@
   "This'll get you started; for a more detailed introduction, please
    head over to https://github.com/pallet/pallet-hadoop-example."
 
-  (use pallet-hadoop.node)
+  (use 'pallet-hadoop.node)
   (use 'pallet.compute)
 
   ;; We can define our compute service here...
@@ -311,8 +311,7 @@
                    :slaves     (slave-group 1)}
                   :base-machine-spec {:os-family :ubuntu
                                       :os-version-matches "10.10"
-                                      :os-64-bit true
-                                      }
+                                      :os-64-bit true}
                   :base-props {:mapred-site {:mapred.task.timeout 300000
                                              :mapred.reduce.tasks 3
                                              :mapred.tasktracker.map.tasks.maximum 3
