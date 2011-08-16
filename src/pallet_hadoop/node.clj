@@ -3,7 +3,7 @@
         [pallet.extensions :only (phase def-phase-fn)]
         [pallet.crate.java :only (java)]
         [pallet.core :only (make-node lift converge)]
-        [pallet.compute :only (primary-ip nodes-by-tag nodes)]
+        [pallet.compute :only (primary-ip private-ip nodes-by-tag nodes)]
         [clojure.set :only (union)])
   (:require [pallet.core :as core]
             [pallet.action.package :as package]
@@ -276,21 +276,23 @@
 (defn master-ip
   "Returns a string containing the IP address of the master node
   instantiated in the service."
-  [tag-kwd service]
+  [service tag-kwd ip-type]
   (when-let [[master-node] (tag-kwd (nodes-by-tag (nodes service)))]
-    (primary-ip master-node)))
+    (case ip-type
+          :private (private-ip master-node)
+          :public (primary-ip master-node))))
 
 (defn jobtracker-ip
   "Returns a string containing the IP address of the jobtracker node
   instantiated in the service."
-  [service]
-  (master-ip service :jobtracker))
+  [ip-type service]
+  (master-ip service :jobtracker ip-type))
 
 (defn namenode-ip
   "Returns a string containing the IP address of the namenode node
   instantiated in the service, if there is one"
-  [service]
-  (master-ip service :namenode))
+  [ip-type service]
+  (master-ip service :namenode ip-type))
 
 (comment
   "This'll get you started; for a more detailed introduction, please
