@@ -72,16 +72,10 @@
 
 (defn hadoop-phases
   "Returns a map of all possible hadoop phases. IP-type specifies..."
-<<<<<<< HEAD
-  [{:keys [nodedefs ip-type]} properties]
-  (let [[jt-tag nn-tag] (roles->tags [:jobtracker :namenode] nodedefs)
-        configure (phase (h/configure ip-type nn-tag jt-tag properties))]
-=======
   [ip-type jt-tag nn-tag properties]
   {:pre [(#{:public :private} ip-type)]}
   (let [configure (phase
                    (h/configure ip-type nn-tag jt-tag properties))]
->>>>>>> feature/upgrade
     {:bootstrap automated-admin-user
      :configure (phase (package/package-manager :update)
                        (package/package-manager :upgrade)
@@ -246,34 +240,11 @@
              (set-vals 0))
          options))
 
-<<<<<<< HEAD
-;; helper functions
-
-(defn master-ip
-  "Returns a string containing the IP address of the master node
-  instantiated in the service."
-  [service tag-kwd ip-type]
-  (when-let [[master-node] (tag-kwd (nodes-by-tag (nodes service)))]
-    (case ip-type
-          :private (private-ip master-node)
-          :public (primary-ip master-node))))
-=======
 ;; ## Helper Functions
->>>>>>> feature/upgrade
 
 (defn jobtracker-ip
   "Returns a string containing the IP address of the jobtracker node
   instantiated in the service."
-<<<<<<< HEAD
-  [ip-type service]
-  (master-ip service :jobtracker ip-type))
-
-(defn namenode-ip
-  "Returns a string containing the IP address of the namenode node
-  instantiated in the service, if there is one"
-  [ip-type service]
-  (master-ip service :namenode ip-type))
-=======
   [service]
   (when-let [[jobtracker] (nodes-with-role service :jobtracker)]
     (primary-ip jobtracker)))
@@ -284,7 +255,6 @@
   [service]
   (when-let [[namenode] (nodes-with-role service :namenode)]
     (primary-ip namenode)))
->>>>>>> feature/upgrade
 
 (comment
   "This'll get you started; for a more detailed introduction, please
@@ -305,19 +275,6 @@
     (service :aws))
 
   (def example-cluster
-<<<<<<< HEAD
-    (cluster-spec :private
-                  {:jobtracker (node-group [:jobtracker :namenode])
-                   :slaves     (slave-group 1)}
-                  :base-machine-spec {:os-family :ubuntu
-                                      :os-version-matches "10.10"
-                                      :os-64-bit true}
-                  :base-props {:mapred-site {:mapred.task.timeout 300000
-                                             :mapred.reduce.tasks 3
-                                             :mapred.tasktracker.map.tasks.maximum 3
-                                             :mapred.tasktracker.reduce.tasks.maximum 3
-                                             :mapred.child.java.opts "-Xms1024m"}}))
-=======
     (hadoop-cluster "cluster-name"
                     :ip-type :private
                     :node-spec {:os-family :ubuntu
@@ -331,7 +288,6 @@
                                    :mapred.tasktracker.map.tasks.maximum 3
                                    :mapred.tasktracker.reduce.tasks.maximum 3
                                    :mapred.child.java.opts "-Xms1024m"}}))
->>>>>>> feature/upgrade
   
   (boot-cluster  example-cluster :compute ec2-service)
   (start-cluster example-cluster :compute ec2-service))
