@@ -171,46 +171,14 @@
 
 (def slave-group (partial node-group [:slavenode]))
 
-;; ## To Wipe Out!
-
-(defn cluster->node-map
-  "Converts a cluster to `node-map` represention, for use in a call to
-  `pallet.core/converge`."
-  [cluster]
-  (into {}
-        (for [[tag {:keys [count node]}] (:node-groups cluster)]
-          [(hadoop-group-spec cluster tag node) count])))
-
-(defn cluster->node-set
-  "Converts a cluster to `node-set` represention, for use in a call to
-  `pallet.core/lift`."
-  [cluster]
-  (keys (cluster->node-map cluster)))
-
 ;; ### Cluster Level Converge and Lift
-
-(defn converge-cluster
-  "Identical to `pallet.core/converge`, with `cluster` taking the
-  place of `node-map`."
-  [cluster & options]
-  (apply core/converge
-         (cluster->node-map cluster)
-         options))
-
-(defn lift-cluster
-  "Identical to `pallet.core/lift`, with `cluster` taking the
-  place of `node-set`."
-  [cluster & options]
-  (apply core/lift
-         (cluster->node-set cluster)
-         options))
 
 (defn boot-cluster
   "Launches all nodes in the supplied cluster, installs hadoop and
   enables SSH access between jobtracker and all other nodes. See
   `pallet.core/converge` for details on acceptable options."
   [cluster & options]
-  (apply converge-cluster
+  (apply core/converge
          cluster
          :phase [:configure
                  :publish-ssh-key
@@ -222,7 +190,7 @@
   `pallet.core/lift` for details on acceptable options. (All are valid
   except `:phase`, for now."
   [cluster & options]
-  (apply lift-cluster
+  (apply core/lift
          cluster
          :phase [:start-namenode
                  :start-hdfs
@@ -236,8 +204,7 @@
   options."
   [cluster & options]
   (apply core/converge
-         (-> (cluster->node-map cluster)
-             (set-vals 0))
+         {cluster 0}
          options))
 
 ;; ## Helper Functions
