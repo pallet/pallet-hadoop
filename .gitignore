@@ -10,3 +10,5 @@ autodoc
 .#*
 *#*
 logs/
+.lein-failures
+.lein-deps-sum
