@@ -1,34 +1,14 @@
 (ns pallet-hadoop.node
-  (:use [pallet.crate.automated-admin-user :only (automated-admin-user)]
+  (:use [pallet-hadoop util phases]
+        [pallet.crate.automated-admin-user :only (automated-admin-user)]
         [pallet.extensions :only (phase def-phase-fn)]
         [pallet.crate.java :only (java)]
         [pallet.core :only (make-node lift converge)]
-        [pallet.compute :only (primary-ip nodes-by-tag nodes)]
-        [clojure.set :only (union)])
+        [pallet.compute :only (primary-ip nodes-by-tag nodes)])
   (:require [pallet.core :as core]
             [pallet.crate.hadoop :as h]))
 
 ;; ## Hadoop Cluster Configuration
-
-;; ### Utilities
-
-(defn merge-to-vec
-  "Returns a vector representation of the union of all supplied
-  items. Entries in xs can be collections or individual items. For
-  example,
-
-  (merge-to-vec [1 2] :help 2 1)
-  => [1 2 :help]"
-  [& xs]
-  (->> xs
-       (map #(if (coll? %) (set %) #{%}))
-       (apply (comp vec union))))
-
-(defn set-vals
-  "Sets all entries of the supplied map equal to the supplied value."
-  [map val]
-  (zipmap (keys map)
-          (repeat val)))
 
 ;; ### Defaults
 
@@ -61,56 +41,39 @@
   [roleseq]
   (boolean (some hadoop-masters roleseq)))
 
-(def
-  ^{:doc "Hadoop requires certain ports to be accessible, as discussed
-  [here](http://goo.gl/nKk3B) by the folks at Cloudera. We provide
-  sets of ports that can be merged based on the hadoop roles that some
-  node-spec wants to use."}
-  hadoop-ports
+;; Hadoop requires certain ports to be accessible, as discussed
+;; [here](http://goo.gl/nKk3B) by the folks at Cloudera. We provide
+;; sets of ports that can be merged based on the hadoop roles that
+;; some node-spec wants to use.
+
+(def hadoop-ports
   {:default #{22 80}
    :namenode #{50070 8020}
    :datanode #{50075 50010 50020}
    :jobtracker #{50030 8021}
    :tasktracker #{50060}
-   :secondarynamenode #{50090 50105}})
+   :secondary-namenode #{50090 50105}})
 
-(def role->phase-map
-  {:default #{:bootstrap
-              :reinstall
-              :configure
-              :reconfigure
-              :authorize-jobtracker}
-   :namenode #{:start-namenode}
-   :datanode #{:start-hdfs}
-   :jobtracker #{:publish-ssh-key :start-jobtracker}
-   :tasktracker #{:start-mapred}})
-
-(defn roles->tags
-  "Accepts sequence of hadoop roles and a map of `tag, node-group`
+(defn get-tags
+  "Accept a map of `tag, node-group` and sequence of hadoop roles
   pairs and returns a sequence of the corresponding node tags. Every
   role must exist in the supplied node-def map to make it past the
   postcondition."
-  [role-seq node-defs]
+  [node-groups role-seq]
   {:post [(= (count %)
              (count role-seq))]}
-  (remove nil?
+  (filter identity
           (for [role role-seq]
             (some (fn [[tag def]]
                     (when (some #{role} (get-in def [:node :roles]))
                       tag))
-                  node-defs))))
-
-(defn roles->phases
-  "Converts a sequence of hadoop roles into a sequence of pallet
-  phases required by a node trying to take on each of these roles."
-  [roles]
-  (->> roles (mapcat role->phase-map) distinct vec))
+                  node-groups))))
 
 (defn hadoop-phases
   "Returns a map of all possible hadoop phases. IP-type specifies..."
-  [{:keys [nodedefs ip-type]} properties]
-  (let [[jt-tag nn-tag] (roles->tags [:jobtracker :namenode] nodedefs)
-        configure (phase
+  [ip-type jt-tag nn-tag properties]
+  {:pre [(#{:public :private} ip-type)]}
+  (let [configure (phase
                    (h/configure ip-type nn-tag jt-tag properties))]
     {:bootstrap automated-admin-user
      :configure (phase (java :jdk)
@@ -126,89 +89,94 @@
      :start-jobtracker h/job-tracker
      :start-namenode (phase (h/name-node "/tmp/node-name/data"))}))
 
-(defn hadoop-machine-spec
-  "Generates a pallet node spec for the supplied hadoop node,
-  merging together the given base map with properties required to
-  support the attached hadoop roles."
-  [{:keys [spec roles]}]
-  (let [ports (->> roles (mapcat hadoop-ports) distinct vec)]
-    (merge-with merge-to-vec
-                spec
-                {:inbound-ports ports})))
+(def role->phase-map
+  {:default     #{:bootstrap
+                  :reinstall
+                  :configure
+                  :reconfigure
+                  :authorize-jobtracker}
+   :namenode    #{:start-namenode}
+   :datanode    #{:start-hdfs}
+   :jobtracker  #{:publish-ssh-key :start-jobtracker}
+   :tasktracker #{:start-mapred}})
+
+(defn roles->phases
+  "Converts a sequence of hadoop roles into a sequence of pallet phases
+  required by a node trying to take on each of these roles."
+  [roles]
+  (getmerge role->phase-map roles))
+
+(defn base-spec
+  "Returns a hadoop server-spec for the supplied sequence of
+  roles."
+  [phase-map role-seq]
+  (let [ports       (getmerge hadoop-ports role-seq)
+        phase-names (roles->phases role-seq)]
+    (server-spec
+     :phases    (select-keys phase-map phase-names)
+     :node-spec (node-spec
+                 :network {:inbound-ports ports}))))
 
 (defn hadoop-server-spec
-  "Returns a map of all hadoop phases. `hadoop-server-spec` currently
-  doesn't compose with existing hadoop phases. This will change soon."
-  [cluster {:keys [props roles]}]
-  (select-keys (hadoop-phases cluster props)
-               (roles->phases roles)))
-
-(defn merge-node
   "Returns a new hadoop node map generated by merging the supplied
   node into the base specs defined by the supplied cluster."
   [cluster node]
   {:post [(some (partial contains? role->phase-map) (:roles %))]}
-  (let [{:keys [base-machine-spec base-props]} cluster
-        {:keys [spec roles props]} node]
-    {:spec (merge base-machine-spec spec)
-     :props (h/merge-config base-props props)
-     :roles (-> roles
-                (conj :default)
-                expand-aliases)}))
+  (let [{:keys [ip-type node-groups]} cluster
+        [jt-tag nn-tag] (get-tags node-groups [:jobtracker :namenode])
+        phase-map (->> (h/merge-config properties (:properties node))
+                       (hadoop-phases ip-type jt-tag nn-tag properties))
+        role-seq  (-> (expand-aliases (:roles node))
+                      (conj :default))]
+    (server-spec
+     :roles   role-seq
+     :extends (base-spec phase-map role-seq))))
 
-(defn hadoop-spec
+(defn hadoop-group-spec
   "Generates a pallet representation of a hadoop node, built from the
   supplied cluster and the supplied hadoop node map -- see
-  `node-group` for construction details. (`hadoop-spec` is similar to
-  `pallet.core/defnode`, sans binding.)"
+  `node-group` for construction details."
   [cluster tag node]
-  (let [node (merge-node cluster node)]
-    (apply core/make-node
-           tag
-           (hadoop-machine-spec node)
-           (apply concat (hadoop-server-spec cluster node)))))
+  (group-spec tag
+              :count     (:count node)
+              :node-spec (:node-spec node)
+              :extends   (hadoop-server-spec cluster node)))
+
+(defn hadoop-cluster-spec
+  [cluster-name & {:keys [ip-type node-groups node-spec] :as cluster}]
+  (cluster-spec cluster-name
+                :node-spec node-spec
+                :groups (for [[tag node-map] (:node-groups cluster)]
+                          (hadoop-group-spec cluster tag node-map))))
 
 (defn node-group
   "Generates a map representation of a Hadoop node. For example:
 
    (node-group [:slavenode] 10)
-    => {:node {:roles [:tasktracker :datanode]
-               :spec {}
-               :props {}}
-       :count 10}"
-  [role-seq & [count & {:keys [spec props]}]]
+    => {:roles [:slavenode]
+        :node-spec  {}
+        :properties {}
+        :count      10}"
+  [role-seq & [count & {:keys [node-spec properties]}]]
   {:pre [(if (master? role-seq)
            (or (nil? count) (= count 1))
            count)]}
-  {:node {:roles role-seq
-          :spec (or spec {})
-          :props (or props {})}
-   :count (or count 1)})
+  {:roles       role-seq
+   :node-spec  (or node-spec  {})
+   :properties (or properties {})
+   :count      (or count 1)})
 
 (def slave-group (partial node-group [:slavenode]))
 
-(defn cluster-spec
-  "Generates a data representation of a hadoop cluster.
-
-    ip-type: `:public` or `:private`. (Hadoop keeps track of
-  jobtracker and namenode identity via IP address. This option toggles
-  the type of IP address used. (EC2 requires `:private`, while a local
-  cluster running on virtual machines will require `:public`."
-  [ip-type nodedefs & {:as options}]
-  {:pre [(#{:public :private} ip-type)]}
-  (merge {:base-machine-spec {}
-          :base-props {}}
-         options
-         {:ip-type ip-type
-          :nodedefs nodedefs}))
+;; ## To Wipe Out!
 
 (defn cluster->node-map
   "Converts a cluster to `node-map` represention, for use in a call to
   `pallet.core/converge`."
   [cluster]
   (into {}
-        (for [[tag {:keys [count node]}] (:nodedefs cluster)]
-          [(hadoop-spec cluster tag node) count])))
+        (for [[tag {:keys [count node]}] (:node-groups cluster)]
+          [(hadoop-group-spec cluster tag node) count])))
 
 (defn cluster->node-set
   "Converts a cluster to `node-set` represention, for use in a call to
@@ -269,20 +237,20 @@
              (set-vals 0))
          options))
 
-;;; helper functions
+;; ## Helper Functions
 
 (defn jobtracker-ip
   "Returns a string containing the IP address of the jobtracker node
   instantiated in the service."
   [service]
-  (when-let [jobtracker (first (:jobtracker (nodes-by-tag (nodes service))))]
+  (when-let [[jobtracker] (nodes-with-role service :jobtracker)]
     (primary-ip jobtracker)))
 
 (defn namenode-ip
-  "Returns a string containing the IP address of tje namenode node
+  "Returns a string containing the IP address of the namenode
   instantiated in the service, if there is one"
   [service]
-  (when-let [namenode  (first (:namenode (nodes-by-tag (nodes service))))]
+  (when-let [[namenode] (nodes-with-role service :namenode)]
     (primary-ip namenode)))
 
 (comment
@@ -304,18 +272,19 @@
     (compute-service-from-config-file :aws))
 
   (def example-cluster
-    (cluster-spec :private
-                  {:jobtracker (node-group [:jobtracker :namenode])
-                   :slaves     (slave-group 1)}
-                  :base-machine-spec {:os-family :ubuntu
-                                      :os-version-matches "10.10"
-                                      :os-64-bit true
-                                      }
-                  :base-props {:mapred-site {:mapred.task.timeout 300000
-                                             :mapred.reduce.tasks 3
-                                             :mapred.tasktracker.map.tasks.maximum 3
-                                             :mapred.tasktracker.reduce.tasks.maximum 3
-                                             :mapred.child.java.opts "-Xms1024m"}}))
+    (hadoop-cluster "cluster-name"
+                    :ip-type :private
+                    :node-spec {:os-family :ubuntu
+                                :os-version-matches "10.10"
+                                :os-64-bit true}
+                    :node-groups {:jobtracker (node-group [:jobtracker :namenode])
+                                  :slaves (slave-group 1)}
+                    :properties
+                    {:mapred-site {:mapred.task.timeout 300000
+                                   :mapred.reduce.tasks 3
+                                   :mapred.tasktracker.map.tasks.maximum 3
+                                   :mapred.tasktracker.reduce.tasks.maximum 3
+                                   :mapred.child.java.opts "-Xms1024m"}}))
   
   (boot-cluster  example-cluster :compute ec2-service)
   (start-cluster example-cluster :compute ec2-service))

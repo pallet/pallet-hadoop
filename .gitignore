@@ -10,3 +10,4 @@ autodoc
 .#*
 *#*
 logs/
+.lein-deps-sum

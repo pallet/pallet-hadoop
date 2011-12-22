@@ -28,4 +28,4 @@ You'll also need to add the Sonatype repository, to get access to Pallet. Add th
 
 For a detailed example of how to run Pallet-Hadoop, see the [example project](https://github.com/pallet/pallet-hadoop-example) here. For more detailed information on the project's design, see [the project wiki](https://github.com/pallet/pallet-hadoop).
 
-Pallet-Hadoop version `0.4.0` uses Pallet 0.6.6 and jclouds 1.2.1.
+Pallet-Hadoop version `0.4.0` uses Pallet `0.6.6` and jclouds `1.2.1`.
