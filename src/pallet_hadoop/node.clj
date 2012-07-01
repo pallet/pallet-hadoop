@@ -115,7 +115,7 @@
     {:bootstrap automated-admin-user
      :configure (phase (package/package-manager :update)
                        (package/package-manager :upgrade)
-                       (java :jdk)
+                       (java :openjdk)
                        (h/install :cloudera)
                        configure)
      :reinstall (phase (h/install :cloudera)
