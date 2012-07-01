@@ -3,7 +3,7 @@
         [pallet.extensions :only (phase def-phase-fn)]
         [pallet.crate.java :only (java)]
         [pallet.core :only (make-node lift converge)]
-        [pallet.compute :only (primary-ip private-ip nodes-by-tag nodes)]
+        [pallet.compute :only (running? primary-ip private-ip nodes-by-tag nodes)]
         [clojure.set :only (union)])
   (:require [pallet.core :as core]
             [pallet.action.package :as package]
@@ -277,10 +277,15 @@
   "Returns a string containing the IP address of the master node
   instantiated in the service."
   [service tag-kwd ip-type]
-  (when-let [[master-node] (tag-kwd (nodes-by-tag (nodes service)))]
+  ;; We need to make sure we only check for running nodes, as if you
+  ;; rebuild the cluster EC2 will report both running and terminated
+  ;; nodes for quite a while.
+  (when-let [master-node (first
+                          (filter running?
+                                  (tag-kwd (nodes-by-tag (nodes service)))))]
     (case ip-type
-          :private (private-ip master-node)
-          :public (primary-ip master-node))))
+      :private (private-ip  master-node)
+      :public (primary-ip  master-node))))
 
 (defn jobtracker-ip
   "Returns a string containing the IP address of the jobtracker node
