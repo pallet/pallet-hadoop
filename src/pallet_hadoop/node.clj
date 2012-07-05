@@ -3,9 +3,10 @@
         [pallet.extensions :only (phase def-phase-fn)]
         [pallet.crate.java :only (java)]
         [pallet.core :only (make-node lift converge)]
-        [pallet.compute :only (primary-ip nodes-by-tag nodes)]
+        [pallet.compute :only (running? primary-ip private-ip nodes-by-tag nodes)]
         [clojure.set :only (union)])
   (:require [pallet.core :as core]
+            [pallet.action.package :as package]
             [pallet.crate.hadoop :as h]))
 
 ;; ## Hadoop Cluster Configuration
@@ -110,10 +111,11 @@
   "Returns a map of all possible hadoop phases. IP-type specifies..."
   [{:keys [nodedefs ip-type]} properties]
   (let [[jt-tag nn-tag] (roles->tags [:jobtracker :namenode] nodedefs)
-        configure (phase
-                   (h/configure ip-type nn-tag jt-tag properties))]
+        configure (phase (h/configure ip-type nn-tag jt-tag properties))]
     {:bootstrap automated-admin-user
-     :configure (phase (java :openjdk)
+     :configure (phase (package/package-manager :update)
+                       (package/package-manager :upgrade)
+                       (java :openjdk)
                        (h/install :cloudera)
                        configure)
      :reinstall (phase (h/install :cloudera)
@@ -269,27 +271,39 @@
              (set-vals 0))
          options))
 
-;;; helper functions
+;; helper functions
+
+(defn master-ip
+  "Returns a string containing the IP address of the master node
+  instantiated in the service."
+  [service tag-kwd ip-type]
+  ;; We need to make sure we only check for running nodes, as if you
+  ;; rebuild the cluster EC2 will report both running and terminated
+  ;; nodes for quite a while.
+  (when-let [master-node (first
+                          (filter running?
+                                  (tag-kwd (nodes-by-tag (nodes service)))))]
+    (case ip-type
+      :private (private-ip  master-node)
+      :public (primary-ip  master-node))))
 
 (defn jobtracker-ip
   "Returns a string containing the IP address of the jobtracker node
   instantiated in the service."
-  [service]
-  (when-let [jobtracker (first (:jobtracker (nodes-by-tag (nodes service))))]
-    (primary-ip jobtracker)))
+  [ip-type service]
+  (master-ip service :jobtracker ip-type))
 
 (defn namenode-ip
-  "Returns a string containing the IP address of tje namenode node
+  "Returns a string containing the IP address of the namenode node
   instantiated in the service, if there is one"
-  [service]
-  (when-let [namenode  (first (:namenode (nodes-by-tag (nodes service))))]
-    (primary-ip namenode)))
+  [ip-type service]
+  (master-ip service :namenode ip-type))
 
 (comment
   "This'll get you started; for a more detailed introduction, please
    head over to https://github.com/pallet/pallet-hadoop-example."
 
-  (use pallet-hadoop.node)
+  (use 'pallet-hadoop.node)
   (use 'pallet.compute)
 
   ;; We can define our compute service here...
@@ -301,7 +315,7 @@
   ;; Or, we can get this from a config file, in
   ;; `~/.pallet/config.clj`.
   (def ec2-service
-    (compute-service-from-config-file :aws))
+    (service :aws))
 
   (def example-cluster
     (cluster-spec :private
@@ -309,8 +323,7 @@
                    :slaves     (slave-group 1)}
                   :base-machine-spec {:os-family :ubuntu
                                       :os-version-matches "10.10"
-                                      :os-64-bit true
-                                      }
+                                      :os-64-bit true}
                   :base-props {:mapred-site {:mapred.task.timeout 300000
                                              :mapred.reduce.tasks 3
                                              :mapred.tasktracker.map.tasks.maximum 3

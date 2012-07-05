@@ -1,8 +1,7 @@
-(defproject pallet-hadoop "0.3.2-SNAPSHOT"
+(defproject pallet-hadoop "0.3.3-beta.1"
   :description "Pallet meets Hadoop."
   :dev-resources-path "dev"
-  :repositories {"sonatype"
-                 "https://oss.sonatype.org/content/repositories/releases/"}  
+  :repositories {"sonatype" "https://oss.sonatype.org/content/repositories/releases/"}  
   :dependencies [[org.clojure/clojure "1.2.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.cloudhoist/pallet "0.6.1"]
