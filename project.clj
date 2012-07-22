@@ -1,4 +1,4 @@
-(defproject org.cloudhoist/pallet-hadoop "0.3.3-beta.4"
+(defproject org.cloudhoist/pallet-hadoop "0.3.3-beta.5-SNAPSHOT"
   :description "Pallet meets Hadoop."
   :dev-resources-path "dev"
   :repositories {"sonatype" "https://oss.sonatype.org/content/repositories/releases/"}  
