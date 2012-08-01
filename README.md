@@ -37,12 +37,15 @@ between clouds involves a change of login credentials, nothing more.
 To include pallet-hadoop in your project, add the following lines to
 `:dev-dependencies` in your `project.clj` file:
 
-    [pallet-hadoop "0.3.3.-beta.4"]
-    [org.jclouds/jclouds-all "1.2.0"]
-    [org.jclouds.driver/jclouds-jsch "1.2.2"]
-    [org.jclouds.driver/jclouds-slf4j "1.2.2"]
-    [ch.qos.logback/logback-classic "1.0.1"]
-    [ch.qos.logback/logback-core "1.0.1"]
+```clojure
+[org.cloudhoist/pallet-hadoop "0.3.3-beta.4"]
+[org.jclouds/jclouds-all "1.4.1"]
+[org.jclouds.driver/jclouds-sshj "1.4.1"]
+[org.jclouds.driver/jclouds-slf4j "1.4.1"]
+[org.cloudhoist/pallet-jclouds "1.4.0-beta.1"]
+[ch.qos.logback/logback-classic "1.0.1"]
+[ch.qos.logback/logback-core "1.0.1"]
+```
 
 You'll also need to add the Sonatype repository, to get access to
 Pallet. Add this k-v pair to your `project.clj` file:
