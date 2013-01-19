@@ -114,7 +114,7 @@
         configure (phase (h/configure ip-type nn-tag jt-tag properties))]
     {:bootstrap automated-admin-user
      :configure (phase (package/package-manager :update)
-                       (package/package-manager :upgrade)
+                       ;(package/package-manager :upgrade)
                        (java :openjdk)
                        (h/install :cloudera)
                        configure)
