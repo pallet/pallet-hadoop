@@ -114,7 +114,7 @@
         configure (phase (h/configure ip-type nn-tag jt-tag properties))]
     {:bootstrap automated-admin-user
      :configure (phase (package/package-manager :update)
-                       (package/package-manager :upgrade)
+                       ;(package/package-manager :upgrade)
                        (java :openjdk)
                        (h/install :cloudera)
                        configure)
@@ -281,8 +281,8 @@
   ;; rebuild the cluster EC2 will report both running and terminated
   ;; nodes for quite a while.
   (when-let [master-node (first
-                          (filter running?
-                                  (tag-kwd (nodes-by-tag (nodes service)))))]
+                          (tag-kwd (nodes-by-tag
+                                    (filter running? (nodes service)))))]
     (case ip-type
       :private (private-ip  master-node)
       :public (primary-ip  master-node))))
