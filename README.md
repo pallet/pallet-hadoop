@@ -37,10 +37,11 @@ between clouds involves a change of login credentials, nothing more.
 To include pallet-hadoop in your project, add the following lines to
 `:dev-dependencies` in your `project.clj` file:
 
-    [pallet-hadoop "0.3.3.-beta.4"]
-    [org.jclouds/jclouds-all "1.2.0"]
-    [org.jclouds.driver/jclouds-jsch "1.2.2"]
-    [org.jclouds.driver/jclouds-slf4j "1.2.2"]
+    [pallet-hadoop "0.3.3"]
+    [org.cloudhoist/pallet-jclouds "1.4.2"]
+    [org.jclouds/jclouds-all "1.4.2"]
+    [org.jclouds.driver/jclouds-jsch "1.4.2"]
+    [org.jclouds.driver/jclouds-slf4j "1.4.2"]
     [ch.qos.logback/logback-classic "1.0.1"]
     [ch.qos.logback/logback-core "1.0.1"]
 
@@ -54,6 +55,5 @@ project](https://github.com/pallet/pallet-hadoop-example) here. For
 more detailed information on the project's design, see [the project
 wiki](https://github.com/pallet/pallet-hadoop).
 
-Pallet-Hadoop version `0.3.3-beta.4` uses Pallet 0.7.0, jclouds 
-1.4.2 and Clojure 1.3+, but should also work with Pallet 0.6.8,
-jclouds 1.2.2 and Clojure 1.2.1.
+Pallet-Hadoop version `0.3.3` uses Pallet `0.7.2`, jclouds 
+`1.4.2` and Clojure `1.3` and later.
