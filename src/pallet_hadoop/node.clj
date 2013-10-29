@@ -7,9 +7,11 @@
         [clojure.set :only (union)])
   (:require [pallet.core :as core]
             [pallet.action.package :as package]
-            [pallet.crate.hadoop :as h]))
+            [pallet.crate.hadoop :as h]
+            [pallet.configure :as config]))
 
 ;; ## Hadoop Cluster Configuration
+(def user-config (:hadoop (config/pallet-config)))
 
 ;; ### Utilities
 
@@ -116,9 +118,9 @@
      :configure (phase (package/package-manager :update)
                        (package/package-manager :upgrade)
                        (java :openjdk)
-                       (h/install :cloudera)
+                       (h/install (or (:distro user-config) :cloudera))
                        configure)
-     :reinstall (phase (h/install :cloudera)
+     :reinstall (phase (h/install (or (:distro user-config) :cloudera))
                        configure)
      :reconfigure configure
      :publish-ssh-key h/publish-ssh-key
@@ -311,7 +313,7 @@
     (compute-service "aws-ec2"
                      :identity "ec2-access-key-id"
                      :credential "ec2-secret-access-key"))
-  
+
   ;; Or, we can get this from a config file, in
   ;; `~/.pallet/config.clj`.
   (def ec2-service
@@ -329,6 +331,6 @@
                                              :mapred.tasktracker.map.tasks.maximum 3
                                              :mapred.tasktracker.reduce.tasks.maximum 3
                                              :mapred.child.java.opts "-Xms1024m"}}))
-  
+
   (boot-cluster  example-cluster :compute ec2-service)
   (start-cluster example-cluster :compute ec2-service))
