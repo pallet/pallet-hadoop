@@ -37,23 +37,26 @@ between clouds involves a change of login credentials, nothing more.
 To include pallet-hadoop in your project, add the following lines to
 `:dev-dependencies` in your `project.clj` file:
 
-    [pallet-hadoop "0.3.4-SNAPSHOT"]
-    [org.cloudhoist/pallet-jclouds "1.4.2"]
-    [org.jclouds/jclouds-all "1.4.2"]
-    [org.jclouds.driver/jclouds-jsch "1.4.2"]
-    [org.jclouds.driver/jclouds-slf4j "1.4.2"]
-    [ch.qos.logback/logback-classic "1.0.1"]
-    [ch.qos.logback/logback-core "1.0.1"]
+```clojure
+[com.palletops/pallet-hadoop "0.3.4-SNAPSHOT"]
+[com.palletops/pallet-jclouds "1.7.1"]
+[org.apache.jclouds/jclouds-all "1.7.1"]
+[org.apache.jclouds.driver/jclouds-sshj "1.7.1"]
+[org.apache.jclouds.driver/jclouds-slf4j "1.7.1"]
+[ch.qos.logback/logback-classic "1.0.1"]
+[ch.qos.logback/logback-core "1.0.1"]
+```
 
 You'll also need to add the Sonatype repository, to get access to
 Pallet. Add this k-v pair to your `project.clj` file:
 
-    :repositories {"sonatype" "http://oss.sonatype.org/content/repositories/releases/"}
-
+```clojure
+:repositories {"sonatype" "http://oss.sonatype.org/content/repositories/releases/"}
+```
 For a detailed example of how to run Pallet-Hadoop, see the [example
 project](https://github.com/pallet/pallet-hadoop-example) here. For
 more detailed information on the project's design, see [the project
 wiki](https://github.com/pallet/pallet-hadoop).
 
-Pallet-Hadoop version `0.3.4-SNAPSHOT` uses Pallet `0.7.2`, jclouds 
-`1.4.2` and Clojure `1.3` and later.
+Pallet-Hadoop version `0.3.4-SNAPSHOT` uses Pallet `0.7.5`, jclouds 
+`1.7.1` and Clojure `1.4` and later.
