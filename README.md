@@ -38,7 +38,7 @@ To include pallet-hadoop in your project, add the following lines to
 `:dev-dependencies` in your `project.clj` file:
 
 ```clojure
-[com.palletops/pallet-hadoop "0.3.4-SNAPSHOT"]
+[com.palletops/pallet-hadoop "0.3.5"]
 [com.palletops/pallet-jclouds "1.7.1"]
 [org.apache.jclouds/jclouds-all "1.7.1"]
 [org.apache.jclouds.driver/jclouds-sshj "1.7.1"]
