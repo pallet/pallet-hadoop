@@ -1,4 +1,4 @@
-(defproject com.palletops/pallet-hadoop "0.3.4"
+(defproject com.palletops/pallet-hadoop "0.3.5-SNAPSHOT"
   :description "Pallet meets Hadoop."
   :dev-resources-path "dev"
   :url "http://github.com/pallet/pallet-hadoop"
